@@ -42,7 +42,7 @@ endif
 
 
 
-HB_CLIENT_SRC := hb_client.c hb_core.c debug.c
+HB_CLIENT_SRC := hb_client.c hb_core.c debug.c profile.c
 
 ifeq ($(ENCRY),DES)
 HB_CLIENT_SRC += des.c deskey.c
@@ -55,7 +55,7 @@ endif
 #endif
 
 all:$(HB_CLIENT)
-	$(STRIP) $(HB_CLIENT)
+	#$(STRIP) $(HB_CLIENT)
 
 $(HB_CLIENT):  
 	$(CC) -o $@ $(HB_CLIENT_SRC) $(CFLAGS) $(LDFLAGS) $(LIBS) $(LIBEX)

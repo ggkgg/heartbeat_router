@@ -1,21 +1,7 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <getopt.h>
-#include <sys/wait.h>
-#include <errno.h>
-#include <signal.h>
-#include <unistd.h>
-#include <sys/time.h>
-#include <time.h>
-#include <fcntl.h>
-#include <string.h>
-#include <sys/stat.h>
-#include <sys/socket.h>
-#include <sys/un.h>
-#include <pwd.h>
-#include <pthread.h>
-
 #include "common.h"
+#include "profile.h"
+#include "hb_core.h"
+
 
 struct glob_arg {
 	char* configFile;
