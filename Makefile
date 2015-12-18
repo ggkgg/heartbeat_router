@@ -42,7 +42,7 @@ endif
 
 
 
-HB_CLIENT_SRC := hb_client.c hb_core.c debug.c profile.c
+HB_CLIENT_SRC := hb_client.c hb_core.c debug.c profile.c XORcode.c
 
 ifeq ($(ENCRY),DES)
 HB_CLIENT_SRC += des.c deskey.c
