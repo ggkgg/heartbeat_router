@@ -1,7 +1,7 @@
 HB_CLIENT = hb_client
 
 ####### x86 mips ######
-PLATFORM := x86
+PLATFORM := mips
 DEBUG_CMP := y
 #DEBUG_LIB :=
 ENCRY := DES
@@ -29,14 +29,14 @@ CC = /opt/buildroot-gcc463/usr/bin/mipsel-buildroot-linux-uclibc-gcc
 STRIP = /opt/buildroot-gcc463/usr/bin/mipsel-buildroot-linux-uclibc-strip
 LDFLAGS =
 
-CFLAGS = -I. -I/home/pengrf/workspace/libxml2-2.7.8/target/include/libxml2
+CFLAGS = -I. 
 ifeq ($(DEBUG_CMP),y)
 CFLAGS += -g -rdynamic
 endif
 
 CCOMPILE = $(CC) $(LDFLAGS) $(CFLAGS) -c  
-LIBS =-L. -L/opt/buildroot-gcc463/usr/mipsel-buildroot-linux-uclibc/sysroot/lib/ -L/home/pengrf/workspace/libxml2-2.7.8/target/lib
-LIBEX = -lauth_core -lpthread -lxml2
+LIBS =-L. -L/opt/buildroot-gcc463/usr/mipsel-buildroot-linux-uclibc/sysroot/lib/ 
+LIBEX = -lpthread 
 LIBA =
 endif
 
