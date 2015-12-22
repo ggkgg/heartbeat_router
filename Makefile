@@ -1,7 +1,7 @@
 HB_CLIENT = hb_client
 
 ####### x86 mips ######
-PLATFORM := mips
+PLATFORM := x86
 DEBUG_CMP := y
 #DEBUG_LIB :=
 ENCRY := DES
@@ -20,7 +20,7 @@ endif
 
 CCOMPILE = $(CC) $(LDFLAGS) $(CFLAGS) -c  
 LIBS = -L. -L/usr/lib64
-LIBEX = 
+LIBEX = -lpthread
 LIBA =
 endif
 

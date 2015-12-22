@@ -24,6 +24,7 @@
 
 #include "debug.h"
 
+
 #define hb_print(level, format...) debug(level, format)
 extern struct debug_info debug_global;
 
