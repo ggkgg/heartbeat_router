@@ -482,8 +482,8 @@ static int init_hbrc(struct heartbeat_route_client** hbrcp)
 	//init_default_hbc_config(hbcConf);	
 	//hbrc->hbrc_conf = hbcConf;
 
-	(*hbrcp)->hbrc_conf = (struct hbc_conf *)malloc(sizeof(struct hbc_conf));
-	init_default_hbc_config((*hbrcp)->hbrc_conf);	
+	//(*hbrcp)->hbrc_conf = (struct hbc_conf *)malloc(sizeof(struct hbc_conf));
+	init_default_hbc_config(&hbrc->hbrc_conf);	
 
 
 	hbrc->hbrc_sm = HBRC_STRAT;
@@ -598,8 +598,8 @@ static int net_echo(struct heartbeat_route_client *hbrc)
 
 void thread_echo(void *arg)
 {
-	//struct heartbeat_route_client* hbrc = (struct heartbeat_route_client*)arg;
-	struct heartbeat_route_client* hbrc = (struct heartbeat_route_client*)&arg;
+	struct heartbeat_route_client* hbrc = (struct heartbeat_route_client*)arg;
+	//struct heartbeat_route_client* hbrc = (struct heartbeat_route_client*)&arg;
 	pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 	pthread_mutex_t cond_mutex = PTHREAD_MUTEX_INITIALIZER;
 	struct	timespec timeout;
@@ -607,7 +607,7 @@ void thread_echo(void *arg)
 	while (1) {
 		net_echo(hbrc);
 		/* Sleep for config.crondinterval seconds... */
-		timeout.tv_sec = time(NULL) + hbrc->hbrc_conf->echo_interval;
+		timeout.tv_sec = time(NULL) + hbrc->hbrc_conf.echo_interval;
 		//timeout.tv_sec = time(NULL) + 10;
 		timeout.tv_nsec = 0;
 	
@@ -625,8 +625,8 @@ void thread_echo(void *arg)
 
 void thread_recv(void *arg)
 {
-	//struct heartbeat_route_client* hbrc = (struct heartbeat_route_client*)arg;
-	struct heartbeat_route_client* hbrc = (struct heartbeat_route_client*)&arg;
+	struct heartbeat_route_client* hbrc = (struct heartbeat_route_client*)arg;
+	//struct heartbeat_route_client* hbrc = (struct heartbeat_route_client*)&arg;
 	int sock_fd = hbrc->hbrc_sockfd;
 	struct sockaddr_un clt_addr;
 	int clt_len = sizeof(struct sockaddr_un);	
@@ -708,13 +708,13 @@ int main(int argc, char **argv)
 		} 
 		else if ( HBRC_CHANLLENGE == hbrc->hbrc_sm ) {
 			debug(LOG_INFO, "Creation of thread_echo!");
-			ret = pthread_create(&G.echoThread.echo_thpid, NULL, (void *)thread_echo, *hbrc);
+			ret = pthread_create(&G.echoThread.echo_thpid, NULL, (void *)thread_echo, hbrc);
 			if (ret != 0) {
 				debug(LOG_ERR, "FATAL: Failed to create a new thread (thread_echo)!");
 			}
 		
 			debug(LOG_INFO, "Creation of thread_recv!");
-			ret = pthread_create(&G.recvThread.recv_thpid, NULL, (void *)thread_recv, *hbrc);
+			ret = pthread_create(&G.recvThread.recv_thpid, NULL, (void *)thread_recv, hbrc);
 			if (ret != 0) {
 				debug(LOG_ERR, "FATAL: Failed to create a new thread (thread_recv)!");
 			}

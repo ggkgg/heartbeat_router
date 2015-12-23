@@ -50,6 +50,15 @@ struct dispatch_thread {
 
 
 
+struct hbc_conf {
+	int echo_interval;
+	int retry_count;
+	int retry_interval;
+	int noecho_interval;
+	struct in_addr default_hb_ip[3];
+};
+
+
 struct glob_arg {
 	/*command*/
 	char* configFile;
@@ -72,7 +81,7 @@ struct heartbeat_route_client {
 	int hbrc_sm;
 	struct hb_server **hbs_head;
 	struct hb_server *current_hbs;
-	struct hbc_conf *hbrc_conf;
+	struct hbc_conf hbrc_conf;
 	int hbs_count;
 
 	/* connect param*/
@@ -92,14 +101,6 @@ struct hb_server {
 	int hbs_index;
 	int try_conn;
 	int used;	
-};
-
-struct hbc_conf {
-	int echo_interval;
-	int retry_count;
-	int retry_interval;
-	int noecho_interval;
-	struct in_addr default_hb_ip[3];
 };
 
 #define DEFAULT_CONFIG_PATH "./hb_client.conf"
