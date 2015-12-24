@@ -11,8 +11,6 @@ int hb_connect(char *host, int port)
     {
         return -1;
     }
-
-    hb_print(LOG_INFO," socket new fd %d \n", clientfd);
   
     memset(&addr, 0, sizeof(struct sockaddr_in));
     addr.sin_family = AF_INET;

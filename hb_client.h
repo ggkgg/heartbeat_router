@@ -25,21 +25,22 @@ enum hbrc_sm_type {
 	HBRC_INVALID = 0,
 	HBRC_STRAT,
 	HBRC_INIT,
+	HBRC_IDLE,
 	HBRC_CHANLLENGE,
 	HBRC_ECHO,
-	HBRC_WORK,
+	HBRC_CLEAN,
 };
 
 
 struct echo_thread {
 	pthread_t echo_thpid;
-	int terminal_flag;
+	int pause_flag;
 };
 
 
 struct recv_thread {
 	pthread_t recv_thpid;
-	int terminal_flag;
+	int pause_flag;
 	int flush_flag;
 };
 
@@ -89,7 +90,13 @@ struct heartbeat_route_client {
 	int sendsn;
 	u32_t session_server_key;
 	u32_t session_client_key;
-	
+
+	/*recv buff*/
+    char* gbuf;
+    int dataLen;
+    int maxLen;
+	int activeRecvFlag;
+
 };
 
 /* 心跳路由客户端的服务器列表 */

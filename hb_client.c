@@ -21,6 +21,13 @@ static int init_resource()
 {	
 
 	G.configFile = strdup(DEFAULT_CONFIG_PATH);
+	G.echoThread.echo_thpid = 0;
+	G.echoThread.pause_flag = 1;
+
+	G.recvThread.recv_thpid = 0;
+	G.recvThread.pause_flag = 1;
+
+	
 	debug_global.debuglevel = DEFAULT_DEBUGLEVEL;
 	debug_global.log_syslog = DEFAULT_LOG_SYSLOG;
 	debug_global.syslog_facility = DEFAULT_SYSLOG_FACILITY;
@@ -29,10 +36,16 @@ static int init_resource()
 	return 0;
 }
 
+void handle_socket_I( int sig )
+{
+	hb_print(LOG_ERR,"Socket Abort\n");
+}
+
 static void init_signals(void)
 {
 	//signal(SIGINT, unregister_heartbeatserver);
 	//signal(SIGTERM, unregister_heartbeatserver);
+	signal(SIGPIPE, handle_socket_I);
 	return;
 }
 
@@ -102,14 +115,29 @@ static void print_hdr(THDR  *tHdr)
 }
 
 
-static void print_chalreq(TCHALREQ  *chalReq)
+static void print_chalreq(THDR  *tHdr, TCHALREQ  *chalReq)
 {
+
+	hb_print(LOG_ERR,"[challange resquest] -->> [hdr]:{flag(0x%04x),pktlen(%d),version(%d),pktType(%d),sn(%d),ext(0x%08x)} \
+[data]:{magic(0x%08x),key(0x%08x),res(%02x%02x%02x%02x%02x%02x%02x%02x)}", 
+		tHdr->flag,
+		tHdr->pktlen,
+		tHdr->version,
+		tHdr->pktType,
+		tHdr->sn,
+		tHdr->ext,
+		chalReq->magic,
+		chalReq->key,
+		chalReq->u8res[0],chalReq->u8res[1],chalReq->u8res[2],chalReq->u8res[3],
+		chalReq->u8res[4],chalReq->u8res[5],chalReq->u8res[6],chalReq->u8res[7]);
+
+#if 0
 	hb_print(LOG_ERR,"[challange resquest] -->> : magic(0x%08x),key(0x%08x),res(%02x%02x%02x%02x%02x%02x%02x%02x)", 
 		chalReq->magic,
 		chalReq->key,
 		chalReq->u8res[0],chalReq->u8res[1],chalReq->u8res[2],chalReq->u8res[3],
 		chalReq->u8res[4],chalReq->u8res[5],chalReq->u8res[6],chalReq->u8res[7]);
-#if 0
+
 	unsigned char* magic = (unsigned char*)&chalReq->magic;
 	hb_print(LOG_ERR,"[challange resquest] -->> : magic(%02x%02x%02x%02x),key(%08x),res(0x%02x%02x%02x%02x%02x%02x%02x%02x)", 
 		magic[0],magic[1],magic[2],magic[3],
@@ -121,38 +149,107 @@ static void print_chalreq(TCHALREQ  *chalReq)
 }
 
 
-static void print_chalresp(TCHALRESP  *chalResp)
+static void print_chalresp(THDR  *tHdr, TCHALRESP  *chalResp)
 {
+		hb_print(LOG_ERR,"<<-- [challange response] [hdr]:{flag(0x%04x),pktlen(%d),version(%d),pktType(%d),sn(%d),ext(0x%08x)} \
+[data]:{sn(%d),magic(0x%02x%02x%02x%02x),key(0x%02x%02x%02x%02x),res(0x%02x%02x%02x%02x%02x%02x)}", 
+			tHdr->flag,
+			tHdr->pktlen,
+			tHdr->version,
+			tHdr->pktType,
+			tHdr->sn,
+			tHdr->ext,
+			chalResp->client_sn,
+			chalResp->magic[0],chalResp->magic[1],chalResp->magic[2],chalResp->magic[3],
+			chalResp->key[0],chalResp->key[1],chalResp->key[2],chalResp->key[3],
+			chalResp->u8res[0],chalResp->u8res[1],chalResp->u8res[2],chalResp->u8res[3],chalResp->u8res[4],chalResp->u8res[5]);
+#if 0
 	hb_print(LOG_ERR,"<<-- [challange response]: sn(%d),magic(0x%02x%02x%02x%02x),key(0x%02x%02x%02x%02x),res(0x%02x%02x%02x%02x%02x%02x)", 
 		chalResp->client_sn,
 		chalResp->magic[0],chalResp->magic[1],chalResp->magic[2],chalResp->magic[3],
 		chalResp->key[0],chalResp->key[1],chalResp->key[2],chalResp->key[3],
 		chalResp->u8res[0],chalResp->u8res[1],chalResp->u8res[2],chalResp->u8res[3],chalResp->u8res[4],chalResp->u8res[5]);
-
+#endif
 }
 
 
-static void print_echoreq(TECHOREQ  *echoReq)
+static void print_echoreq(THDR  *tHdr, TECHOREQ  *echoReq)
 {
+	hb_print(LOG_ERR,"[echo resquest] -->> [hdr]:{flag(0x%04x),pktlen(%d),version(%d),pktType(%d),sn(%d),ext(0x%08x)} \
+[data]:{equipmentSn(0x%02x%02x%02x%02x%02x%02x)}", 
+		tHdr->flag,
+		tHdr->pktlen,
+		tHdr->version,
+		tHdr->pktType,
+		tHdr->sn,
+		tHdr->ext,
+		(unsigned char)echoReq->equipmentSn[0],(unsigned char)echoReq->equipmentSn[1],(unsigned char)echoReq->equipmentSn[2],
+		(unsigned char)echoReq->equipmentSn[3],(unsigned char)echoReq->equipmentSn[2],(unsigned char)echoReq->equipmentSn[5]);
+
+#if 0
 	hb_print(LOG_ERR,"[echo resquest] -->> : equipmentSn(0x%02x%02x%02x%02x%02x%02x)", 
 		(unsigned char)echoReq->equipmentSn[0],(unsigned char)echoReq->equipmentSn[1],(unsigned char)echoReq->equipmentSn[2],
 		(unsigned char)echoReq->equipmentSn[3],(unsigned char)echoReq->equipmentSn[2],(unsigned char)echoReq->equipmentSn[5]);
+#endif
 }
 
 
-static void print_echoresq(TECHORESP *echoResp)
+static void print_echoresp(THDR  *tHdr, TECHORESP *echoResp)
 {
+	hb_print(LOG_ERR,"<<-- [echo response] [hdr]:{flag(0x%04x),pktlen(%d),version(%d),pktType(%d),sn(%d),ext(0x%08x)} \
+[data]:{client_sn(%d)}", 
+		tHdr->flag,
+		tHdr->pktlen,
+		tHdr->version,
+		tHdr->pktType,
+		tHdr->sn,
+		tHdr->ext,
+		echoResp->client_sn);
+#if 0
 	hb_print(LOG_ERR,"<<-- [echo response]: client_sn(%d)", 
 		echoResp->client_sn);
+#endif
 }
 
 
-static void print_notifyresq(TNOTIFYREQ  *notifyReq)
+static void print_notifyreq(THDR  *tHdr,TNOTIFYREQ  *notifyReq)
 {
-	hb_print(LOG_ERR,"[echo resquest] -->> : equipmentSn(0x%c%c%c%c%c%c), command(%d), sendtime(%d)", 
+	hb_print(LOG_ERR,"<<-- [notify resquest] [hdr]:{flag(0x%04x),pktlen(%d),version(%d),pktType(%d),sn(%d),ext(0x%08x)} \
+[data]:{equipmentSn(0x%c%c%c%c%c%c), command(%d), sendtime(%d)}", 
+		tHdr->flag,
+		tHdr->pktlen,
+		tHdr->version,
+		tHdr->pktType,
+		tHdr->sn,
+		tHdr->ext,
 		notifyReq->equipmentSn[0],notifyReq->equipmentSn[1],notifyReq->equipmentSn[2],
 		notifyReq->equipmentSn[3],notifyReq->equipmentSn[4],notifyReq->equipmentSn[5],
 		notifyReq->command,notifyReq->sendTime);
+
+#if 0
+	hb_print(LOG_ERR,"[notify resquest] -->> : equipmentSn(0x%c%c%c%c%c%c), command(%d), sendtime(%d)", 
+		notifyReq->equipmentSn[0],notifyReq->equipmentSn[1],notifyReq->equipmentSn[2],
+		notifyReq->equipmentSn[3],notifyReq->equipmentSn[4],notifyReq->equipmentSn[5],
+		notifyReq->command,notifyReq->sendTime);
+#endif
+}
+
+
+static void print_notifyresp(THDR  *tHdr,TNOTIFYRESP* notifyResp)
+{
+	hb_print(LOG_ERR,"[notify response] -->> [hdr]:{flag(0x%04x),pktlen(%d),version(%d),pktType(%d),sn(%d),ext(0x%08x)} \
+[data]:{returnSn(%d), returnCode(%d)}", 
+		tHdr->flag,
+		tHdr->pktlen,
+		tHdr->version,
+		tHdr->pktType,
+		tHdr->sn,
+		tHdr->ext,
+		notifyResp->returnSn,notifyResp->returnCode);
+#if 0
+	hb_print(LOG_ERR,"<<-- [notify response]: returnSn(%d), returnCode(%d)", 
+		notifyResp->returnSn,notifyResp->returnCode);
+#endif
 }
 
 
@@ -189,14 +286,11 @@ int do_challange(struct heartbeat_route_client *hbrc)
     memset(deschal, 0, sizeof(deschal));
 
     int bytes = sizeof(TCHALREQ);
-	print_hdr(pHdr);
-	print_chalreq(pReq);
+	//print_hdr(pHdr);
+	print_chalreq(pHdr,pReq);
 
     des_encode((const void *)pReq, deschal, CHANLLENGE_KEY, bytes);
-
     pHdr->pktlen = bytes;
-	hb_print(LOG_INFO, "pReq(%d),deschal(%d),bytes(%d)",sizeof(TCHALREQ),strlen(deschal),bytes);
-
     send(fd, pHdr, sizeof(THDR), 0);
     send(fd, deschal, bytes, 0);
 
@@ -407,6 +501,31 @@ static int main_debug()
 }
 #endif
 
+
+int set_noblock(int sClient)
+{
+    int opts;
+
+    opts = fcntl(sClient, F_GETFL);
+
+    if(opts < 0)
+    {
+        perror("fcntl(sock,GETFL)");
+        exit(1);
+    }
+
+    opts = opts | O_NONBLOCK;
+
+    if(fcntl(sClient, F_SETFL, opts) < 0)
+    {
+        perror("fcntl(sock, SETFL, opts)");
+        exit(1);
+    }
+
+    return 0;
+}
+
+
 static int parse_file(struct heartbeat_route_client* hbrc)
 {
 #if 0
@@ -467,13 +586,20 @@ static int init_hbrc(struct heartbeat_route_client** hbrcp)
 
 	/* init firest hbs */
 	hbs = get_hbs();
+	
 	hbs->hbs_index = 0;
-	hbrc->hbs_head[hbs->hbs_index] = hbs;
 	hbrc->hbs_count = 1;
+	hbrc->hbs_head = (struct hb_server **)malloc(hbrc->hbs_count*sizeof(struct hb_server *));
+	hbrc->hbs_head[hbs->hbs_index] = hbs;
+	
 	hbrc->sendsn = 0;
 	hbrc->hbrc_sockfd = 0;
 	hbrc->session_client_key = 0;
 	hbrc->session_server_key = 0;
+
+	hbrc->gbuf = NULL;
+	hbrc->dataLen = 0;
+	hbrc->maxLen = 0;
 
 
 
@@ -492,7 +618,7 @@ static int init_hbrc(struct heartbeat_route_client** hbrcp)
 	return 0;
 }
 
-
+/* ÂÖÑ¯ÐÄÌø·þÎñÆ÷£¬Èç¹ûÈ«²¿Ê§°Ü£¬·µ»Ø-1*/
 static int net_challage(struct heartbeat_route_client *hbrc)
 {
 	int i=0;
@@ -507,11 +633,11 @@ static int net_challage(struct heartbeat_route_client *hbrc)
 
 		hbs = hbrc->hbs_head[i];
 		if ((clientfd = hb_connect(inet_ntoa(hbs->hbs_ip),hbs->hbs_port)) < 0) {
-			hb_print(LOG_ERR, "Connect HeartBeat Fail!");
+			/*Connect HeartBeat Fail!*/
 			return -1;
 		}
 
-		hbrc->hbrc_sockfd = clientfd; 	
+		hbrc->hbrc_sockfd = clientfd;
 		
 		do_challange(hbrc);
  
@@ -533,8 +659,8 @@ static int net_challage(struct heartbeat_route_client *hbrc)
 		hbrc->session_server_key = *pchage;
 		hbrc->current_hbs = hbs;
 		
-		print_hdr(pHdr);
-		print_chalresp(pReq);
+		//print_hdr(pHdr);
+		print_chalresp(pHdr,pReq);
 
 		break;
 
@@ -564,8 +690,8 @@ static int net_echo(struct heartbeat_route_client *hbrc)
 
     //strncpy(pReq->equipmentSn, equipmentSn, 6);
     memcpy(pReq->equipmentSn, equipmentSn, 6);
-	print_hdr(pHdr);
-	print_echoreq(&echo_reqmsg);
+	//print_hdr(pHdr);
+	print_echoreq(pHdr,&echo_reqmsg);
 	
     TECHOREQ secho_reqmsg;
     int bytes = sizeof(TECHOREQ);
@@ -596,6 +722,125 @@ static int net_echo(struct heartbeat_route_client *hbrc)
 #endif
 }
 
+
+static int net_notify(struct heartbeat_route_client *hbrc, struct notify_response* pnotifyRespMsg)
+{
+	THDR notifyRespHdr;
+	THDR *pHdr = &notifyRespHdr;
+	memset(pHdr, 0, sizeof(*pHdr));
+
+	pHdr->flag = PKT_HDR_MAGIC;
+	pHdr->version = PKT_VERSION;
+	pHdr->pktType = PKT_NOTIFY_RESPONSE;
+	pHdr->sn = hbrc->sendsn++;
+
+	TNOTIFYRESP  sendNotifyRespMsg;
+	pHdr->pktlen = sizeof(sendNotifyRespMsg);
+
+	print_notifyresp(pHdr,pnotifyRespMsg);
+
+	XORencode(pnotifyRespMsg, &sendNotifyRespMsg, hbrc->session_client_key, pHdr->pktlen);
+
+	send(hbrc->hbrc_sockfd, pHdr, sizeof(THDR), 0);
+	send(hbrc->hbrc_sockfd, &sendNotifyRespMsg, pHdr->pktlen, 0);
+
+
+}
+
+
+int dispatch_notify(struct heartbeat_route_client* hbrc, char *pBuff)
+{
+
+    THDR *pHdr;
+    pHdr = (THDR *)pBuff;
+    int clientSn = 0;
+
+    TNOTIFYRESP notifyRespMsg;
+    memset(&notifyRespMsg, 0, sizeof(notifyRespMsg));
+	clientSn = pHdr->sn;
+    notifyRespMsg.returnSn = clientSn;
+    notifyRespMsg.returnCode = OK;
+    net_notify(hbrc, &notifyRespMsg);
+
+    return 1;
+}
+
+
+
+int proc_echoresp(struct heartbeat_route_client* hbrc, char *pBuff)
+{
+	THDR* pHdr;
+	TECHORESP Recho_reqmsg;
+
+	pHdr = (THDR *)pBuff;
+	XORencode(pBuff + sizeof(THDR), &Recho_reqmsg, hbrc->session_server_key, pHdr->pktlen);
+	//print_hdr(pHdr);
+	print_echoresp(pHdr,&Recho_reqmsg);
+
+}
+
+int proc_notifyreq(struct heartbeat_route_client* hbrc, char *pBuff)
+{
+	THDR* pHdr;
+	TECHORESP Recho_reqmsg;
+
+	pHdr = (THDR *)pBuff;
+	TNOTIFYREQ Notify_reqmsg;
+	XORencode(pBuff + sizeof(THDR), &Notify_reqmsg, hbrc->session_server_key, pHdr->pktlen);
+	//print_hdr(pHdr);
+	print_notifyreq(pHdr,&Notify_reqmsg);
+
+	dispatch_notify(hbrc,pBuff);
+
+
+}
+
+
+int proc_packet(struct heartbeat_route_client* hbrc, char *pBuff, int readLen)
+{
+    THDR *pHdr;
+    pHdr = (THDR *)pBuff;
+
+    /*æœ¬æ¬¡å¤„ç†çš„æ•°æ®é•¿åº¦*/
+    int dataLen = sizeof(THDR) + pHdr->pktlen;
+
+    if(pHdr->pktType == PKT_ECHO_RESPONSE)
+    {
+        proc_echoresp(hbrc, pBuff);
+    }
+    else if(pHdr->pktType == PKT_NOTIFY_REQUEST)
+    {
+        proc_notifyreq(hbrc, pBuff);
+    }
+#if 0
+    else if(pHdr->pktType == PKT_NOTIFY_REQUEST)
+    {
+        recv_notifyreq_fun(fd, pBuff);
+    }
+    else if(pHdr->pktType == PKT_NOTIFY_RESPONSE)
+    {
+        recv_notifyresp_fun(fd, pBuff);
+    }
+#endif
+    else
+    {
+	    hb_print(LOG_ERR, "[Fail] invalid pocket!");
+    }
+	
+    int remainData = readLen - dataLen;
+
+    if(remainData > 0)
+    {
+        return remainData;
+    }
+    else
+    {
+        return 0;
+    }
+
+    return 0;
+}
+
 void thread_echo(void *arg)
 {
 	struct heartbeat_route_client* hbrc = (struct heartbeat_route_client*)arg;
@@ -605,7 +850,9 @@ void thread_echo(void *arg)
 	struct	timespec timeout;
 	
 	while (1) {
-		net_echo(hbrc);
+		if(!G.echoThread.pause_flag) {
+			net_echo(hbrc);
+		}
 		/* Sleep for config.crondinterval seconds... */
 		timeout.tv_sec = time(NULL) + hbrc->hbrc_conf.echo_interval;
 		//timeout.tv_sec = time(NULL) + 10;
@@ -622,11 +869,194 @@ void thread_echo(void *arg)
 	}
 }
 
+int ishdrValid(char *pBuff, u32_t len)
+{
+    THDR *pHdr;
+
+    if(len < sizeof(THDR))
+    {
+        return -1;
+    }
+
+    pHdr = (THDR *)pBuff;
+
+    unsigned int needlen = sizeof(THDR) + pHdr->pktlen;
+
+    if(len < needlen)
+    {
+        return -2;
+    }
+
+    if(pHdr->flag != PKT_HDR_MAGIC)
+    {
+        hb_print(LOG_ERR, "recv invalid pkt, recv magic=0x%X, right=0x%X\n", pHdr->flag, PKT_HDR_MAGIC);
+        return -3;
+    }
+
+    return 1;
+}
+
+void * recvMalloc(u32_t len)
+{
+    void *p = malloc(len);
+
+    if(p == NULL)
+    {
+        return NULL;
+    }
+    else
+    {
+        memset(p, 0, len);
+        return p;
+    }
+}
+
+
+int recv_from_hbs(struct heartbeat_route_client* hbrc)
+{
+    char buff[512] = {0};
+
+    char * oldBuff = hbrc->gbuf;
+    int dataLen = hbrc->dataLen;
+    int maxLen = hbrc->maxLen;
+
+	int fd = hbrc->hbrc_sockfd;
+
+
+    while(1)
+    {
+        int len = read(fd, buff, 256);
+
+        if(len < 0)
+        {
+            buff[0] = 0;
+			/* ·Ç×èÈûÄ£Ê½ÏÂ£¬Ã»ÓÐÊý¾Ý·µ»ØEAGAIN£¬Ìø³öÑ­»· 
+			hb_print(LOG_ERR, "[Fail] read < 0 bytes ,errno(%d) %s!",errno,strerror(errno));
+			*/
+            if(errno == EINTR || errno == EWOULDBLOCK || errno == EAGAIN)
+            {
+                break;
+            }
+#if 0
+            else
+            {
+            	hb_print(LOG_ERR, "[Fail] read < 0 bytes ,set activeRecvFlag 0!");
+                hbrc->activeRecvFlag = 0;
+                return -1;
+            }
+#endif
+        }
+		/* µ±·þÎñÆ÷¹Ø±Õ£¬Á´½Ó¶Ï¿ª£¬select»áÁ¢¼´·µ»Ø¿É¶Á£¬readºóµÄlenµÈÓÚ0*/
+        else if(len == 0)
+        {
+			hb_print(LOG_ERR, "[Fail] read = 0 bytes, seesion have closed!");
+            buff[len] = 0;
+#if 0
+            hbrc->activeRecvFlag = true;
+#endif
+            return -1;
+        }
+
+        int totalLen = dataLen + len;
+
+        if(oldBuff == NULL && maxLen == 0)
+        {
+            oldBuff = (char *)recvMalloc(512);
+
+            if(oldBuff == 0)
+            {
+#if 0
+                hbrc->activeRecvFlag = 0;
+#endif
+				hb_print(LOG_ERR, "Fail to malloc memory for oldBuff!");
+                return -1;
+            }
+
+            hbrc->gbuf = oldBuff ;
+            hbrc->maxLen = 512;
+            maxLen = 512;
+        }
+
+        if(totalLen <= maxLen)
+        {
+            memcpy(oldBuff + dataLen, buff, len);
+            dataLen += len;
+            hbrc->dataLen = dataLen;
+        }
+        else
+        {
+            char *newBuff = (char *)recvMalloc(totalLen);
+
+            if(newBuff == 0)
+            {
+#if 0
+                hbrc->activeRecvFlag = 0;
+#endif
+				hb_print(LOG_ERR, "Fail to malloc memory for newBuff!");
+                return -1;
+            }
+
+            hbrc->gbuf = newBuff ;
+            hbrc->maxLen = totalLen;
+            maxLen = totalLen;
+
+            memcpy(newBuff, oldBuff, dataLen);
+            memcpy(newBuff + dataLen, buff, len);
+
+            dataLen += len;
+            hbrc->dataLen = dataLen;
+            free(oldBuff);
+            oldBuff = newBuff;
+
+        }
+
+        char *recvBuff = hbrc->gbuf;
+
+		/* È¡³öÊý¾Ý£¬Íê³ÉÊÂ¼þ·Ö·¢ */
+        while(1)
+        {
+            if(dataLen == 0)
+            {
+                break;
+            }
+
+            int invalidFlag = ishdrValid(recvBuff, dataLen);
+
+            if(invalidFlag < 0 && invalidFlag != -3)
+            {
+                break;
+            }
+
+            if(invalidFlag == -3)
+            {
+                THDR *pHdr;
+                pHdr = (THDR *)recvBuff;
+                int needLen = 0;
+                needLen = sizeof(THDR) + pHdr->pktlen;
+                dataLen = dataLen - needLen;
+                memcpy(recvBuff, recvBuff + needLen, dataLen);
+                hbrc->dataLen = dataLen;
+                continue;
+            }
+
+            int remainLen = proc_packet(hbrc, recvBuff, dataLen);
+
+            if(remainLen > 0)
+            {
+                memcpy(recvBuff, recvBuff + dataLen - remainLen, remainLen);
+            }
+
+            dataLen = remainLen;
+            hbrc->dataLen = dataLen;
+        }
+    }	
+}
 
 void thread_recv(void *arg)
 {
 	struct heartbeat_route_client* hbrc = (struct heartbeat_route_client*)arg;
 	//struct heartbeat_route_client* hbrc = (struct heartbeat_route_client*)&arg;
+#if 0
 	int sock_fd = hbrc->hbrc_sockfd;
 	struct sockaddr_un clt_addr;
 	int clt_len = sizeof(struct sockaddr_un);	
@@ -636,9 +1066,44 @@ void thread_recv(void *arg)
 	int maxsock;
 	struct timeval tv;
 
+	/* ÉèÖÃfdÎª·Ç×èÈûÄ£Ê½£¬Ö´ÐÐselect*/
+	set_noblock(sock_fd);
 	maxsock = sock_fd;
+#endif
 
 	while (1) {
+		int sock_fd = hbrc->hbrc_sockfd;
+		struct sockaddr_un clt_addr;
+		int clt_len = sizeof(struct sockaddr_un);	
+		int ret;
+		fd_set read_fds;
+		int maxsock;
+		struct timeval tv;
+		
+		if(G.recvThread.pause_flag) {
+			pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
+			pthread_mutex_t cond_mutex = PTHREAD_MUTEX_INITIALIZER;
+			struct	timespec timeout;	
+			/* Sleep for config.crondinterval seconds... */
+			timeout.tv_sec = time(NULL) + 10;
+			timeout.tv_nsec = 0;
+			
+			/* Mutex must be locked for pthread_cond_timedwait... */
+			pthread_mutex_lock(&cond_mutex);
+			
+			/* Thread safe "sleep" */
+			pthread_cond_timedwait(&cond, &cond_mutex, &timeout);
+			
+			/* No longer needs to be locked */
+			pthread_mutex_unlock(&cond_mutex);
+
+			continue;
+		}
+		
+		/* ÉèÖÃfdÎª·Ç×èÈûÄ£Ê½£¬Ö´ÐÐselect*/
+		set_noblock(sock_fd);
+		maxsock = sock_fd;
+
 		// timeout setting
 		tv.tv_sec = 30;
 		tv.tv_usec = 0;
@@ -647,7 +1112,7 @@ void thread_recv(void *arg)
 		FD_ZERO(&read_fds);
 		FD_SET(sock_fd, &read_fds);
 
-
+		hb_print(LOG_DEBUG, " select data !");
 		ret = select(maxsock + 1, &read_fds, NULL, NULL, &tv);
 		if (ret < 0) {
 			hb_print(LOG_ERR, "[Fail] create select !");
@@ -659,26 +1124,39 @@ void thread_recv(void *arg)
 
 		// check whether a new connection comes
 		if (FD_ISSET(sock_fd, &read_fds)) {
-			char revBuffer[1024] = {0};
-			int recbytes;
-			THDR* pHdr;
-			TECHORESP Recho_reqmsg;
-			if(-1 == (recbytes = read(sock_fd, revBuffer, 1024))){
-			  hb_print(LOG_ERR,"read data fail !");
-			  close(sock_fd);
-			  return -1;
-			}
-			
-			hb_print(LOG_INFO,"recbytes(%d)",recbytes);
-			pHdr = (THDR *)revBuffer;
-			XORencode(revBuffer + sizeof(THDR), &Recho_reqmsg, hbrc->session_server_key, pHdr->pktlen);
-			print_hdr(pHdr);
-			print_echoresq(&Recho_reqmsg);
+			if (recv_from_hbs(hbrc) < 0) {
+				debug(LOG_ERR, "[ECHO -> CLEAN] session have closed !");
+				G.recvThread.pause_flag = 1;
+				hbrc->hbrc_sm = HBRC_CLEAN;
+			}	
+			hb_print(LOG_DEBUG, " complete one recv data !");
 		}
-		sleep(1);
 	}
+#if 0
+    if(!hbrc->activeRecvFlag)
+    {
+		hb_print(LOG_ERR, "[Fail] create select !");
+    }
+#endif
+
 }
 
+
+static int clean_hbrc(struct heartbeat_route_client* hbrc)
+{
+	/* init firest hbs */
+	hbrc->sendsn = 0;
+	hbrc->hbrc_sockfd = 0;
+	hbrc->session_client_key = 0;
+	hbrc->session_server_key = 0;
+
+	if(hbrc->gbuf) {
+		free(hbrc->gbuf);
+	}
+	hbrc->gbuf = NULL;
+	hbrc->dataLen = 0;
+	hbrc->maxLen = 0;
+}
 
 int main(int argc, char **argv)
 {
@@ -703,21 +1181,39 @@ int main(int argc, char **argv)
 	
 	while(1){
 		if ( HBRC_INIT == hbrc->hbrc_sm ){
-			net_challage(hbrc);			
+			if ( net_challage(hbrc) < 0 ){
+				debug(LOG_ERR, "[INIT -> IDLE] Failed to connect all heartbeat server!");
+				hbrc->hbrc_sm = HBRC_IDLE;
+				continue;
+			}
+			debug(LOG_ERR, "[INIT -> CHANLLENGE] ");
 			hbrc->hbrc_sm = HBRC_CHANLLENGE;
-		} 
+		}
+		else if ( HBRC_IDLE == hbrc->hbrc_sm ) {
+			//sleep(hbrc->hbrc_conf.noecho_interval);
+			sleep(10);
+			debug(LOG_ERR, "[IDLE -> INIT] rest for %d(s), connect heartbeat server!",hbrc->hbrc_conf.noecho_interval);
+			hbrc->hbrc_sm = HBRC_INIT;
+		}
 		else if ( HBRC_CHANLLENGE == hbrc->hbrc_sm ) {
-			debug(LOG_INFO, "Creation of thread_echo!");
-			ret = pthread_create(&G.echoThread.echo_thpid, NULL, (void *)thread_echo, hbrc);
-			if (ret != 0) {
-				debug(LOG_ERR, "FATAL: Failed to create a new thread (thread_echo)!");
+			if(G.echoThread.echo_thpid == 0 ){
+				debug(LOG_INFO, "Creation of thread_echo!");
+				ret = pthread_create(&G.echoThread.echo_thpid, NULL, (void *)thread_echo, hbrc);
+				if (ret != 0) {
+					debug(LOG_ERR, "FATAL: Failed to create a new thread (thread_echo)!");
+				}
 			}
-		
-			debug(LOG_INFO, "Creation of thread_recv!");
-			ret = pthread_create(&G.recvThread.recv_thpid, NULL, (void *)thread_recv, hbrc);
-			if (ret != 0) {
-				debug(LOG_ERR, "FATAL: Failed to create a new thread (thread_recv)!");
+			G.echoThread.pause_flag = 0;
+
+			if(G.recvThread.recv_thpid == 0 ){
+				debug(LOG_INFO, "Creation of thread_recv!");
+				ret = pthread_create(&G.recvThread.recv_thpid, NULL, (void *)thread_recv, hbrc);
+				if (ret != 0) {
+					debug(LOG_ERR, "FATAL: Failed to create a new thread (thread_recv)!");
+				}
 			}
+			G.recvThread.pause_flag = 0;
+
 #if 0				
 			debug(LOG_INFO, "Creation of thread_dispatch!");
 			ret = pthread_create(&G.dispatchThread.dispatch_thpid, NULL, (void *)thread_dispatch, NULL);
@@ -725,16 +1221,19 @@ int main(int argc, char **argv)
 				debug(LOG_ERR, "FATAL: Failed to create a new thread (thread_dispatch)!");
 			}
 #endif
+			debug(LOG_ERR, "[CHANLLENGE -> ECHO] ");
 			hbrc->hbrc_sm = HBRC_ECHO;
-			//if (pthread_join(G.echoThread.echo_thpid,&status)!=0){
-			//	printf(" wait for crond thread!\n");
-			//	return;
-			//}			
 		}
 		else if ( HBRC_ECHO == hbrc->hbrc_sm ) {
 			sleep(30);
+		}		
+		else if ( HBRC_CLEAN == hbrc->hbrc_sm ) {
+			G.echoThread.pause_flag = 1;
+			G.recvThread.pause_flag = 1;
+			clean_hbrc(hbrc);
+			debug(LOG_ERR, "[CLEAN -> INIT] Pause echo thread and recv thread,reinit!");
+			hbrc->hbrc_sm = HBRC_INIT;
 		}
-		
 		
 	}
 	
