@@ -119,7 +119,7 @@ static void print_chalreq(THDR  *tHdr, TCHALREQ  *chalReq)
 {
 
 	hb_print(LOG_ERR,"[challange resquest] -->> [hdr]:{flag(0x%04x),pktlen(%d),version(%d),pktType(%d),sn(%d),ext(0x%08x)} \
-[data]:{magic(0x%08x),key(0x%08x),res(%02x%02x%02x%02x%02x%02x%02x%02x)}", 
+[data]:{magic(0x%08x),key(%d),res(%02x%02x%02x%02x%02x%02x%02x%02x)}", 
 		tHdr->flag,
 		tHdr->pktlen,
 		tHdr->version,
@@ -152,7 +152,7 @@ static void print_chalreq(THDR  *tHdr, TCHALREQ  *chalReq)
 static void print_chalresp(THDR  *tHdr, TCHALRESP  *chalResp)
 {
 		hb_print(LOG_ERR,"<<-- [challange response] [hdr]:{flag(0x%04x),pktlen(%d),version(%d),pktType(%d),sn(%d),ext(0x%08x)} \
-[data]:{sn(%d),magic(0x%02x%02x%02x%02x),key(0x%02x%02x%02x%02x),res(0x%02x%02x%02x%02x%02x%02x)}", 
+[data]:{sn(%d),magic(0x%08x),key(%d),res(0x%02x%02x%02x%02x%02x%02x)}", 
 			tHdr->flag,
 			tHdr->pktlen,
 			tHdr->version,
@@ -160,8 +160,10 @@ static void print_chalresp(THDR  *tHdr, TCHALRESP  *chalResp)
 			tHdr->sn,
 			tHdr->ext,
 			chalResp->client_sn,
-			chalResp->magic[0],chalResp->magic[1],chalResp->magic[2],chalResp->magic[3],
-			chalResp->key[0],chalResp->key[1],chalResp->key[2],chalResp->key[3],
+			(u32_t)chalResp->magic,
+			//chalResp->magic[0],chalResp->magic[1],chalResp->magic[2],chalResp->magic[3],
+			(u32_t)chalResp->key,
+			//chalResp->key[0],chalResp->key[1],chalResp->key[2],chalResp->key[3],
 			chalResp->u8res[0],chalResp->u8res[1],chalResp->u8res[2],chalResp->u8res[3],chalResp->u8res[4],chalResp->u8res[5]);
 #if 0
 	hb_print(LOG_ERR,"<<-- [challange response]: sn(%d),magic(0x%02x%02x%02x%02x),key(0x%02x%02x%02x%02x),res(0x%02x%02x%02x%02x%02x%02x)", 
@@ -548,19 +550,6 @@ static int parse_file(struct heartbeat_route_client* hbrc)
 	return 0;
 }
 
-static int init_default_hbc_config(struct hbc_conf *conf)
-{
-	int i = 0;
-
-	conf->echo_interval = 20;
-	conf->retry_count = 3;
-	conf->retry_interval = 30;
-	conf->noecho_interval = 60;
-	for( i=0;i<3;i++ ){
-		inet_aton("0",&conf->default_hb_ip[i]);
-		//&conf->default_hb_ip[i] = NULL;
-	}
-}
 
 static struct hb_server* get_hbs()
 {
@@ -574,6 +563,112 @@ static struct hb_server* get_hbs()
 	return hbs;
 }
 
+static int hb_isdns(char *dnsip)
+{
+	struct in_addr dip;
+	
+	inet_aton("255.255.255.255",&dip);
+	inet_aton(dnsip,&dip);
+	if(strncmp(inet_ntoa(dip),"255.255.255.255",strlen(inet_ntoa(dip))) == 0){
+		return 1;
+	} else {
+		return 0;
+	}
+}
+
+static int parse_hb_dnsip(struct heartbeat_route_client *hbrc, char *dnsip)
+{
+    /* Establish string and get the first token: */
+    char* token = strtok(dnsip,",");
+    while( token != NULL )
+    {
+        hb_print(LOG_INFO, "dnsip %s",token);
+		if(hb_isdns(token)) {
+		}
+		else {
+			struct hb_server* hbs;			
+			hbs = get_hbs();
+			inet_aton(token,&hbs->hbs_ip);
+			hbs->hbs_index = hbrc->hbs_count++;
+			hbrc->hbs_head[hbs->hbs_index] = hbs;
+			hb_print(LOG_INFO, "hbrc->hbs_count (%d) hbSever(%s)",hbrc->hbs_count,inet_ntoa(hbs->hbs_ip));			
+		}
+			
+        /* Get next token: */
+        token = strtok(NULL,",");
+    }
+    return 0;
+
+}
+
+
+#if CVNWARE
+static int parse_startup(struct heartbeat_route_client *hbrc)
+{
+    HEARTBEAT_CFG_S Cfg;
+	char hbAddr[HEARTBEAT_EXTADDR_LEN] = {0};
+	char hbDefaultAddr[BUF_SIZE_256] = {0};
+	//char hbDefaultAddr[BUF_SIZE_256];
+	int ret;
+	
+    memset(&Cfg, 0, sizeof(HEARTBEAT_CFG_S));
+    ret = HEARTBEAT_GetConfig(&Cfg);
+    if (ret != OK)
+    {
+	    hb_print(LOG_ERR, "Get HeartBeat Config faild, Ret=%d",ret);
+        return -1;
+    }
+	
+	hbrc->hbrc_conf.echo_interval = Cfg.ConnectInterval;
+	hbrc->hbrc_conf.noecho_interval = Cfg.UnconnectInterval;
+	hbrc->hbrc_conf.retry_count = Cfg.RetryCount;
+	hbrc->hbrc_conf.retry_interval = Cfg.RetryInterval;
+
+	hb_print(LOG_INFO, "echo(%d) noecho(%d) retry_count(%d) retry_interval(%d)",
+		hbrc->hbrc_conf.echo_interval,hbrc->hbrc_conf.noecho_interval,hbrc->hbrc_conf.retry_count,hbrc->hbrc_conf.retry_interval);
+	hb_print(LOG_INFO, "Cfg.DefaultAddr(%d) %s  Cfg.ExtAddr(%d) %s",strlen(Cfg.DefaultAddr),Cfg.DefaultAddr,strlen(Cfg.ExtAddr),Cfg.ExtAddr);
+	
+	strncpy(hbDefaultAddr,Cfg.DefaultAddr,strlen(Cfg.DefaultAddr));
+	strncpy(hbAddr,Cfg.ExtAddr,strlen(Cfg.ExtAddr));
+
+	parse_hb_dnsip(hbrc,hbDefaultAddr);
+	parse_hb_dnsip(hbrc,hbAddr);
+
+#if 0
+	struct in_addr tip;
+	inet_aton("127.0.0.1",&tip);
+	hb_print(LOG_INFO, " 111 tip (%s)",inet_ntoa(tip));
+	
+	inet_aton("www.baidu.com",&tip);
+	hb_print(LOG_INFO, " 2222 tip (%s)",inet_ntoa(tip));
+
+	inet_aton("255.255.255.256",&tip);
+	hb_print(LOG_INFO, " 3333 tip (%s)",inet_ntoa(tip));
+
+	inet_aton("255.255.255.255",&tip);
+	hb_print(LOG_INFO, " 4444 tip (%s)",inet_ntoa(tip));
+
+	
+#endif
+
+}
+#endif
+
+static int init_default_hbc_config(struct hbc_conf *conf)
+{
+	int i = 0;
+
+	conf->echo_interval = 20;
+	conf->retry_count = 3;
+	conf->retry_interval = 30;
+	conf->noecho_interval = 60;
+	/*
+	for( i=0;i<3;i++ ){
+		inet_aton("0",&conf->default_hb_ip[i]);
+	}
+	*/
+}
+
 static int init_hbrc(struct heartbeat_route_client** hbrcp)
 {
 	struct heartbeat_route_client *hbrc;
@@ -584,23 +679,21 @@ static int init_hbrc(struct heartbeat_route_client** hbrcp)
 	hbrc = *hbrcp;
 	hbrc->hbrc_sm = HBRC_INVALID;
 
-	/* init firest hbs */
-	hbs = get_hbs();
-	
-	hbs->hbs_index = 0;
-	hbrc->hbs_count = 1;
-	hbrc->hbs_head = (struct hb_server **)malloc(hbrc->hbs_count*sizeof(struct hb_server *));
-	hbrc->hbs_head[hbs->hbs_index] = hbs;
-	
+
+	/* connect conf*/
 	hbrc->sendsn = 0;
 	hbrc->hbrc_sockfd = 0;
 	hbrc->session_client_key = 0;
 	hbrc->session_server_key = 0;
 
+	/* recv buff*/
 	hbrc->gbuf = NULL;
 	hbrc->dataLen = 0;
 	hbrc->maxLen = 0;
 
+	/* init hbs  */
+	hbrc->hbs_count = 0;
+	hbrc->hbs_head = (struct hb_server **)malloc(MAX_HB_COUNT*sizeof(struct hb_server *));
 
 
 	/* init hbrc conf */
@@ -622,7 +715,8 @@ static int init_hbrc(struct heartbeat_route_client** hbrcp)
 static int net_challage(struct heartbeat_route_client *hbrc)
 {
 	int i=0;
-
+	int conectFlag = 0;
+	struct hbc_conf conf = hbrc->hbrc_conf;
 
 	for( i=0;i<hbrc->hbs_count;i++) {
 		struct hb_server* hbs;
@@ -634,7 +728,8 @@ static int net_challage(struct heartbeat_route_client *hbrc)
 		hbs = hbrc->hbs_head[i];
 		if ((clientfd = hb_connect(inet_ntoa(hbs->hbs_ip),hbs->hbs_port)) < 0) {
 			/*Connect HeartBeat Fail!*/
-			return -1;
+			sleep(5);
+			continue;
 		}
 
 		hbrc->hbrc_sockfd = clientfd;
@@ -661,10 +756,12 @@ static int net_challage(struct heartbeat_route_client *hbrc)
 		
 		//print_hdr(pHdr);
 		print_chalresp(pHdr,pReq);
-
+		conectFlag = 1;
 		break;
 
 	}
+
+	return conectFlag;
 
 }
 
@@ -755,11 +852,15 @@ int dispatch_notify(struct heartbeat_route_client* hbrc, char *pBuff)
     pHdr = (THDR *)pBuff;
     int clientSn = 0;
 
+#if CVNWARE
+	HEARTBEAT_EventSend();
+#endif
+
     TNOTIFYRESP notifyRespMsg;
     memset(&notifyRespMsg, 0, sizeof(notifyRespMsg));
 	clientSn = pHdr->sn;
     notifyRespMsg.returnSn = clientSn;
-    notifyRespMsg.returnCode = OK;
+    notifyRespMsg.returnCode = NOF_OK;
     net_notify(hbrc, &notifyRespMsg);
 
     return 1;
@@ -1173,15 +1274,25 @@ int main(int argc, char **argv)
 
 	init_hbrc(&G.hbrc);
 	hbrc = G.hbrc;
+
+	hbrc->hbrc_sm = HBRC_INVALID;
 	
 	parse_commandline(argc, argv);
+
+	hbrc->hbrc_sm = HBRC_STRAT;
 	parse_file(hbrc);
+#if CVNWARE
+	if(parse_startup(hbrc) < 0) {
+		return -1;
+	}
+#endif
+
 	hbrc->hbrc_sm = HBRC_INIT;
 
 	
 	while(1){
 		if ( HBRC_INIT == hbrc->hbrc_sm ){
-			if ( net_challage(hbrc) < 0 ){
+			if ( net_challage(hbrc) <= 0 ){
 				debug(LOG_ERR, "[INIT -> IDLE] Failed to connect all heartbeat server!");
 				hbrc->hbrc_sm = HBRC_IDLE;
 				continue;

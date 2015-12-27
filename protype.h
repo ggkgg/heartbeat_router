@@ -70,13 +70,13 @@ struct notify_response
 
 enum resp_code
 {
-    OK = 1,
-    AUTH_FAIILED,
-    SEND_FAILED,
-    USER_NOT_EXISTED,
-    UN_AUTHED,
-    CONNECT_FAILED,
-    USER_TYPE_ERROR
+    NOF_OK = 1,
+    NOF_AUTH_FAIILED,
+    NOF_SEND_FAILED,
+    NOF_USER_NOT_EXISTED,
+    NOF_UN_AUTHED,
+    NOF_CONNECT_FAILED,
+    NOF_USER_TYPE_ERROR
 };
 
 

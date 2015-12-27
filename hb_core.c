@@ -22,7 +22,7 @@ int hb_connect(char *host, int port)
     if(i < 0 && errno != EINPROGRESS)
     {
 
-        hb_print(LOG_ERR,"errno(%d) %s", errno,strerror(errno));
+        hb_print(LOG_ERR,"connect (%s) errno(%d) %s",host,errno,strerror(errno));
         close(clientfd);
         return -1;
     }

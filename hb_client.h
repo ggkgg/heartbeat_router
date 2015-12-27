@@ -1,6 +1,11 @@
+#if CVNWARE
+#include "cvnware.h"
+#endif
 #include "common.h"
 #include "profile.h"
 #include "hb_core.h"
+
+
 
 #if 0
 enum hbrc_sm_type {
@@ -56,7 +61,6 @@ struct hbc_conf {
 	int retry_count;
 	int retry_interval;
 	int noecho_interval;
-	struct in_addr default_hb_ip[3];
 };
 
 
@@ -111,6 +115,7 @@ struct hb_server {
 };
 
 #define DEFAULT_CONFIG_PATH "./hb_client.conf"
+#define MAX_HB_COUNT 10
 
 //static int init_hbrc(struct heartbeat_route_client *hbrc);
 static struct hb_server* get_hbs();

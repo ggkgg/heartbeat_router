@@ -1,11 +1,18 @@
 HB_CLIENT = hb_client
 
 ####### x86 mips ######
-PLATFORM := x86
+PLATFORM := mips
 DEBUG_CMP := y
 #DEBUG_LIB :=
 ENCRY := DES
+CVNWARE :=y
 
+ifeq ($(CVNWARE),y)
+TOPDIR := ../../..
+#include $(TOPDIR)/.config
+#include $(TOPDIR)/rules/libm.mk
+ROMFSDIR :=../../../../sdk/RT288x_SDK/source/romfs
+endif
 
 
 ifeq ($(PLATFORM),x86)
@@ -19,28 +26,31 @@ CFLAGS += -g -rdynamic
 endif
 
 CCOMPILE = $(CC) $(LDFLAGS) $(CFLAGS) -c  
-LIBS = -L. -L/usr/lib64
-LIBEX = -lpthread
+LIBS += -L. -L/usr/lib64
+LIBEX += -lpthread
 LIBA =
 endif
 
 ifeq ($(PLATFORM),mips)
 CC = /opt/buildroot-gcc463/usr/bin/mipsel-buildroot-linux-uclibc-gcc
 STRIP = /opt/buildroot-gcc463/usr/bin/mipsel-buildroot-linux-uclibc-strip
-LDFLAGS =
+LDFLAGS +=
 
 CFLAGS = -I. 
 ifeq ($(DEBUG_CMP),y)
-CFLAGS += -g -rdynamic
+CFLAGS += -g -rdynamic 
 endif
 
 CCOMPILE = $(CC) $(LDFLAGS) $(CFLAGS) -c  
-LIBS =-L. -L/opt/buildroot-gcc463/usr/mipsel-buildroot-linux-uclibc/sysroot/lib/ 
-LIBEX = -lpthread 
+LIBS +=-L. -L/opt/buildroot-gcc463/usr/mipsel-buildroot-linux-uclibc/sysroot/lib/
+LIBEX += -lpthread
 LIBA =
 endif
 
-
+ifeq ($(CVNWARE),y)
+CFLAGS += -I$(TOPDIR)/include -I$(TOPDIR)/uim/webs-2-5
+CFLAGS += -DCVNWARE
+endif
 
 HB_CLIENT_SRC := hb_client.c hb_core.c debug.c profile.c XORcode.c
 
@@ -56,6 +66,7 @@ endif
 
 all:$(HB_CLIENT)
 	#$(STRIP) $(HB_CLIENT)
+	cp -f hb_client $(TOPDIR)/bin
 
 $(HB_CLIENT):  
 	$(CC) -o $@ $(HB_CLIENT_SRC) $(CFLAGS) $(LDFLAGS) $(LIBS) $(LIBEX)
@@ -75,7 +86,7 @@ $(AUTH_MARKET):
 	$(CC) -o $@ auth_market.c $(CFLAGS) $(LIBS) $(LIBEX)
 
 	
-.PHONY: clean backup
+.PHONY: clean backup $(HB_CLIENT)
 clean: 
 	rm -f $(HB_CLIENT) *.o
 
