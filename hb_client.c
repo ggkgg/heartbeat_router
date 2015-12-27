@@ -151,20 +151,26 @@ static void print_chalreq(THDR  *tHdr, TCHALREQ  *chalReq)
 
 static void print_chalresp(THDR  *tHdr, TCHALRESP  *chalResp)
 {
-		hb_print(LOG_ERR,"<<-- [challange response] [hdr]:{flag(0x%04x),pktlen(%d),version(%d),pktType(%d),sn(%d),ext(0x%08x)} \
-[data]:{sn(%d),magic(0x%08x),key(%d),res(0x%02x%02x%02x%02x%02x%02x)}", 
-			tHdr->flag,
-			tHdr->pktlen,
-			tHdr->version,
-			tHdr->pktType,
-			tHdr->sn,
-			tHdr->ext,
-			chalResp->client_sn,
-			(u32_t)chalResp->magic,
-			//chalResp->magic[0],chalResp->magic[1],chalResp->magic[2],chalResp->magic[3],
-			(u32_t)chalResp->key,
-			//chalResp->key[0],chalResp->key[1],chalResp->key[2],chalResp->key[3],
-			chalResp->u8res[0],chalResp->u8res[1],chalResp->u8res[2],chalResp->u8res[3],chalResp->u8res[4],chalResp->u8res[5]);
+	u32_t server_key;
+    memcpy(&server_key, chalResp->key, sizeof(server_key));
+	u32_t magic;
+    memcpy(&magic, chalResp->magic, sizeof(magic));
+
+	
+	hb_print(LOG_ERR,"<<-- [challange response] [hdr]:{flag(0x%04x),pktlen(%d),version(%d),pktType(%d),sn(%d),ext(0x%08x)} \
+[data]:{sn(%d),magic(%08x),key(%d),res(0x%02x%02x%02x%02x%02x%02x)}", 
+		tHdr->flag,
+		tHdr->pktlen,
+		tHdr->version,
+		tHdr->pktType,
+		tHdr->sn,
+		tHdr->ext,
+		chalResp->client_sn,
+		magic,
+		//chalResp->magic[0],chalResp->magic[1],chalResp->magic[2],chalResp->magic[3],
+		server_key,
+		//chalResp->key[0],chalResp->key[1],chalResp->key[2],chalResp->key[3],
+		chalResp->u8res[0],chalResp->u8res[1],chalResp->u8res[2],chalResp->u8res[3],chalResp->u8res[4],chalResp->u8res[5]);
 #if 0
 	hb_print(LOG_ERR,"<<-- [challange response]: sn(%d),magic(0x%02x%02x%02x%02x),key(0x%02x%02x%02x%02x),res(0x%02x%02x%02x%02x%02x%02x)", 
 		chalResp->client_sn,
@@ -186,7 +192,7 @@ static void print_echoreq(THDR  *tHdr, TECHOREQ  *echoReq)
 		tHdr->sn,
 		tHdr->ext,
 		(unsigned char)echoReq->equipmentSn[0],(unsigned char)echoReq->equipmentSn[1],(unsigned char)echoReq->equipmentSn[2],
-		(unsigned char)echoReq->equipmentSn[3],(unsigned char)echoReq->equipmentSn[2],(unsigned char)echoReq->equipmentSn[5]);
+		(unsigned char)echoReq->equipmentSn[3],(unsigned char)echoReq->equipmentSn[4],(unsigned char)echoReq->equipmentSn[5]);
 
 #if 0
 	hb_print(LOG_ERR,"[echo resquest] -->> : equipmentSn(0x%02x%02x%02x%02x%02x%02x)", 
@@ -268,6 +274,7 @@ int do_challange(struct heartbeat_route_client *hbrc)
     THDR chal_header;
     THDR *pHdr = &chal_header;
 
+	memset(pHdr,0,sizeof(*pHdr));
     pHdr->flag = PKT_HDR_MAGIC;
     pHdr->pktlen = sizeof(TCHALREQ);
     pHdr->version = PKT_VERSION;
@@ -279,7 +286,9 @@ int do_challange(struct heartbeat_route_client *hbrc)
 
     pReq->magic = PKT_CHALLENGE_MAGIC;
     //pReq->magic = htonl(PKT_CHALLENGE_MAGIC);
-    pReq->key = (u32_t)time(NULL);
+    //pReq->key = (u32_t)time(NULL);
+    /*pengruofeng debugmips*/
+	pReq->key = 1451024923;
 	hbrc->session_client_key = pReq->key;
 		
     memset(pReq->u8res, 0x08, sizeof(pReq->u8res));
@@ -618,8 +627,9 @@ static int parse_startup(struct heartbeat_route_client *hbrc)
 	    hb_print(LOG_ERR, "Get HeartBeat Config faild, Ret=%d",ret);
         return -1;
     }
-	
-	hbrc->hbrc_conf.echo_interval = Cfg.ConnectInterval;
+
+	//hbrc->hbrc_conf.echo_interval = Cfg.ConnectInterval;
+	hbrc->hbrc_conf.echo_interval = 30;
 	hbrc->hbrc_conf.noecho_interval = Cfg.UnconnectInterval;
 	hbrc->hbrc_conf.retry_count = Cfg.RetryCount;
 	hbrc->hbrc_conf.retry_interval = Cfg.RetryInterval;
@@ -662,11 +672,6 @@ static int init_default_hbc_config(struct hbc_conf *conf)
 	conf->retry_count = 3;
 	conf->retry_interval = 30;
 	conf->noecho_interval = 60;
-	/*
-	for( i=0;i<3;i++ ){
-		inet_aton("0",&conf->default_hb_ip[i]);
-	}
-	*/
 }
 
 static int init_hbrc(struct heartbeat_route_client** hbrcp)
@@ -721,8 +726,8 @@ static int net_challage(struct heartbeat_route_client *hbrc)
 	for( i=0;i<hbrc->hbs_count;i++) {
 		struct hb_server* hbs;
 		int clientfd;
-		char revBuffer[1024] = {0};
-		int recbytes;
+		char revBuffer[128] = {0};
+		int recbytes,recTolBytes = 0;
 		unsigned char de_msgstr[256] = {0};
 
 		hbs = hbrc->hbs_head[i];
@@ -735,7 +740,69 @@ static int net_challage(struct heartbeat_route_client *hbrc)
 		hbrc->hbrc_sockfd = clientfd;
 		
 		do_challange(hbrc);
- 
+
+#if 1 
+		fd_set read_fds;
+		int maxsock;
+		struct timeval tv;
+		int ret;
+		int chanResqLen;
+
+		chanResqLen = sizeof(THDR) + sizeof(TCHALRESP);
+		while (recTolBytes < chanResqLen) {
+			char revdata[128] = {0};
+			maxsock = clientfd;
+			// timeout setting
+			tv.tv_sec = 5;
+			tv.tv_usec = 0;
+
+			// initialize file descriptor set
+			FD_ZERO(&read_fds);
+			FD_SET(clientfd, &read_fds);
+			ret = select(maxsock + 1, &read_fds, NULL, NULL, &tv);
+			if (ret < 0) {
+				hb_print(LOG_ERR, "[Fail] create select !");
+				break;
+			} else if (ret == 0) {
+				hb_print(LOG_INFO, "select timeout!");
+				continue;
+			}			
+			if (FD_ISSET(clientfd, &read_fds)) {
+				recbytes = read(clientfd, revdata, 128);
+				memcpy(&revBuffer[recTolBytes],revdata,recbytes);
+				recTolBytes += recbytes;
+			}
+		}
+
+
+
+		THDR *pHdr;
+		pHdr = (THDR *)revBuffer;
+		int datalen = sizeof(THDR) + pHdr->pktlen;	
+
+		TCHALRESP  Rchal_respmsg;
+		TCHALRESP  *pReq = &Rchal_respmsg;
+
+		/*pengruofeng debug mips*/
+		int j;
+		unsigned char *Chaldata = revBuffer + sizeof(THDR);
+		printf("EDS cryto data(%d): \n",recTolBytes);
+		for(j=0;j<sizeof(TCHALRESP);j++)
+			printf("%02x",Chaldata[j]);
+		printf("\n");
+
+		des_decode((void *)(revBuffer + sizeof(THDR)), pReq, CHANLLENGE_KEY, sizeof(*pReq));
+		u32_t* pchage = (u32_t *)&Rchal_respmsg.key;
+		hbrc->session_server_key = *pchage;
+		hbrc->current_hbs = hbs;
+
+		//print_hdr(pHdr);
+		print_chalresp(pHdr,pReq);
+		conectFlag = 1;
+		break;
+
+
+#else		
 		if(-1 == (recbytes = read(clientfd, revBuffer, 1024))){
 		  hb_print(LOG_ERR,"read data fail !");
 		  close(clientfd);
@@ -758,6 +825,7 @@ static int net_challage(struct heartbeat_route_client *hbrc)
 		print_chalresp(pHdr,pReq);
 		conectFlag = 1;
 		break;
+#endif
 
 	}
 
@@ -776,6 +844,7 @@ static int net_echo(struct heartbeat_route_client *hbrc)
     THDR echo_hdr;
     THDR *pHdr = &echo_hdr;
 
+	memset(pHdr,0,sizeof(*pHdr));
     pHdr->flag = PKT_HDR_MAGIC;
     pHdr->pktlen = sizeof(TECHOREQ);
     pHdr->version = PKT_VERSION;
@@ -793,7 +862,7 @@ static int net_echo(struct heartbeat_route_client *hbrc)
     TECHOREQ secho_reqmsg;
     int bytes = sizeof(TECHOREQ);
 
-    XORencode(&echo_reqmsg, &secho_reqmsg, hbrc->session_client_key, bytes);
+    XORencode(&echo_reqmsg, &secho_reqmsg, hbrc->session_server_key, bytes);
 
     send(hbrc->hbrc_sockfd, pHdr, sizeof(THDR), 0);
     send(hbrc->hbrc_sockfd, &secho_reqmsg, bytes, 0);
@@ -824,8 +893,8 @@ static int net_notify(struct heartbeat_route_client *hbrc, struct notify_respons
 {
 	THDR notifyRespHdr;
 	THDR *pHdr = &notifyRespHdr;
-	memset(pHdr, 0, sizeof(*pHdr));
 
+	memset(pHdr,0,sizeof(*pHdr));
 	pHdr->flag = PKT_HDR_MAGIC;
 	pHdr->version = PKT_VERSION;
 	pHdr->pktType = PKT_NOTIFY_RESPONSE;
@@ -836,7 +905,7 @@ static int net_notify(struct heartbeat_route_client *hbrc, struct notify_respons
 
 	print_notifyresp(pHdr,pnotifyRespMsg);
 
-	XORencode(pnotifyRespMsg, &sendNotifyRespMsg, hbrc->session_client_key, pHdr->pktlen);
+	XORencode(pnotifyRespMsg, &sendNotifyRespMsg, hbrc->session_server_key, pHdr->pktlen);
 
 	send(hbrc->hbrc_sockfd, pHdr, sizeof(THDR), 0);
 	send(hbrc->hbrc_sockfd, &sendNotifyRespMsg, pHdr->pktlen, 0);
@@ -874,7 +943,7 @@ int proc_echoresp(struct heartbeat_route_client* hbrc, char *pBuff)
 	TECHORESP Recho_reqmsg;
 
 	pHdr = (THDR *)pBuff;
-	XORencode(pBuff + sizeof(THDR), &Recho_reqmsg, hbrc->session_server_key, pHdr->pktlen);
+	XORencode(pBuff + sizeof(THDR), &Recho_reqmsg, hbrc->session_client_key, pHdr->pktlen);
 	//print_hdr(pHdr);
 	print_echoresp(pHdr,&Recho_reqmsg);
 
@@ -887,7 +956,7 @@ int proc_notifyreq(struct heartbeat_route_client* hbrc, char *pBuff)
 
 	pHdr = (THDR *)pBuff;
 	TNOTIFYREQ Notify_reqmsg;
-	XORencode(pBuff + sizeof(THDR), &Notify_reqmsg, hbrc->session_server_key, pHdr->pktlen);
+	XORencode(pBuff + sizeof(THDR), &Notify_reqmsg, hbrc->session_client_key, pHdr->pktlen);
 	//print_hdr(pHdr);
 	print_notifyreq(pHdr,&Notify_reqmsg);
 
@@ -902,7 +971,7 @@ int proc_packet(struct heartbeat_route_client* hbrc, char *pBuff, int readLen)
     THDR *pHdr;
     pHdr = (THDR *)pBuff;
 
-    /*æœ¬æ¬¡å¤„ç†çš„æ•°æ®é•¿åº¦*/
+    /*æœ¬æ¬¡å¤„ç†çš„æ•°æ®é•¿åº*/
     int dataLen = sizeof(THDR) + pHdr->pktlen;
 
     if(pHdr->pktType == PKT_ECHO_RESPONSE)
@@ -1038,6 +1107,11 @@ int recv_from_hbs(struct heartbeat_route_client* hbrc)
             {
                 break;
             }
+#if 1
+			/* mipsÆ½Ì¨ÏÂ£¬ÉèÖÃ·Ç×èÈûÄ£Ê½£¬Ã»ÓÐÊý¾Ý·µ»Ø0£¬±íÊ¾success£¬Æ½Ì¨bug? */
+			if(errno == 0)
+				break;
+#endif
 #if 0
             else
             {
