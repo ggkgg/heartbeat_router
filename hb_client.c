@@ -592,7 +592,41 @@ static int parse_hb_dnsip(struct heartbeat_route_client *hbrc, char *dnsip)
     while( token != NULL )
     {
         hb_print(LOG_INFO, "dnsip %s",token);
-		if(hb_isdns(token)) {
+		if(hb_isdns(token)) {				
+			/*
+			struct hostent
+			 {
+				char	*h_name;		// official name of host
+				char	**h_aliases;	// alias list 
+				int 	h_addrtype; 	// host address type 
+				int 	h_length;		// length of address 
+				char	**h_addr_list;	// list of addresses
+			}£»
+			*/
+			struct hostent *he;
+			struct in_addr **addr_list;
+			int i;
+			if ((he = gethostbyname(token)) == NULL) {  // get the host info
+				hb_print(LOG_ERR, "Can't resolve domain (%s)", token);
+				return -1;
+			}
+			
+			hb_print(LOG_INFO,"Official name is: %s", he->h_name);
+			hb_print(LOG_INFO,"IP addresses: ");
+			addr_list = (struct in_addr **)he->h_addr_list;
+			for(i = 0; addr_list[i] != NULL; i++) {
+				printf("%s ", inet_ntoa(*addr_list[i]));
+			}
+			printf("\n");
+			
+			for(i = 0; addr_list[i] != NULL; i++) {
+				struct hb_server* hbs;			
+				hbs = get_hbs();
+				hbs->hbs_ip = *addr_list[i];
+				hbs->hbs_index = hbrc->hbs_count++;
+				hbrc->hbs_head[hbs->hbs_index] = hbs;
+				hb_print(LOG_INFO, "hbrc->hbs_count (%d) hbSever(%s)",hbrc->hbs_count,inet_ntoa(hbs->hbs_ip));					
+			}
 		}
 		else {
 			struct hb_server* hbs;			
@@ -635,7 +669,7 @@ static int parse_startup(struct heartbeat_route_client *hbrc)
 	hbrc->hbrc_conf.retry_interval = Cfg.RetryInterval;
 
 	hb_print(LOG_INFO, "echo(%d) noecho(%d) retry_count(%d) retry_interval(%d)",
-		hbrc->hbrc_conf.echo_interval,hbrc->hbrc_conf.noecho_interval,hbrc->hbrc_conf.retry_count,hbrc->hbrc_conf.retry_interval);
+	hbrc->hbrc_conf.echo_interval,hbrc->hbrc_conf.noecho_interval,hbrc->hbrc_conf.retry_count,hbrc->hbrc_conf.retry_interval);
 	hb_print(LOG_INFO, "Cfg.DefaultAddr(%d) %s  Cfg.ExtAddr(%d) %s",strlen(Cfg.DefaultAddr),Cfg.DefaultAddr,strlen(Cfg.ExtAddr),Cfg.ExtAddr);
 	
 	strncpy(hbDefaultAddr,Cfg.DefaultAddr,strlen(Cfg.DefaultAddr));
@@ -644,6 +678,7 @@ static int parse_startup(struct heartbeat_route_client *hbrc)
 	parse_hb_dnsip(hbrc,hbDefaultAddr);
 	parse_hb_dnsip(hbrc,hbAddr);
 
+	return 1;
 #if 0
 	struct in_addr tip;
 	inet_aton("127.0.0.1",&tip);
@@ -731,6 +766,7 @@ static int net_challage(struct heartbeat_route_client *hbrc)
 		unsigned char de_msgstr[256] = {0};
 
 		hbs = hbrc->hbs_head[i];
+		hb_print(LOG_INFO,"try to connect heartbeat server(%s:%d)",inet_ntoa(hbs->hbs_ip),hbs->hbs_port);
 		if ((clientfd = hb_connect(inet_ntoa(hbs->hbs_ip),hbs->hbs_port)) < 0) {
 			/*Connect HeartBeat Fail!*/
 			sleep(5);
@@ -841,8 +877,33 @@ static int net_echo(struct heartbeat_route_client *hbrc)
 	//char equipmentSn[6] = {0x88,0x90,0x22,0x33,0x44,0x55};
 	
 	char equipmentSn[6]= "112233";
+   	char emac[16] = {0}; 
+	unsigned int emac_x[12] = {0};
     THDR echo_hdr;
     THDR *pHdr = &echo_hdr;
+	int i = 0;
+	
+	DRV_AmtsGetEMac(emac);
+	hb_print(LOG_INFO,"############ emac = %s",emac);
+
+#if 0
+	sscanf(emac,"%02x%02x%02x%02x%02x%02x",
+		&emac_x[0],&emac_x[1],&emac_x[2],&emac_x[3],&emac_x[4],&emac_x[5]);	
+	
+	for(i=0;i<6;i++) {
+		hb_print(LOG_INFO,"############ emac_x[%d] = %02x",i,emac_x[i]);
+	}
+	
+	for(i=0;i<6;i++) {
+		equipmentSn[i] = emac_x[i];
+	}
+#else
+	sscanf(emac,"%02x%02x%02x%02x%02x%02x",
+		&equipmentSn[0],&equipmentSn[1],&equipmentSn[2],
+		&equipmentSn[3],&equipmentSn[4],&equipmentSn[5]); 
+#endif
+	//sprintf(equipmentSn,"%");
+	
 
 	memset(pHdr,0,sizeof(*pHdr));
     pHdr->flag = PKT_HDR_MAGIC;
@@ -922,6 +983,7 @@ int dispatch_notify(struct heartbeat_route_client* hbrc, char *pBuff)
     int clientSn = 0;
 
 #if CVNWARE
+	hb_print(LOG_INFO,"dispatch nofity,inform tr069!");
 	HEARTBEAT_EventSend();
 #endif
 
