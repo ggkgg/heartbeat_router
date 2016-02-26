@@ -285,10 +285,9 @@ int do_challange(struct heartbeat_route_client *hbrc)
     TCHALREQ *pReq = &chal_reqmsg;
 
     pReq->magic = PKT_CHALLENGE_MAGIC;
-    //pReq->magic = htonl(PKT_CHALLENGE_MAGIC);
-    //pReq->key = (u32_t)time(NULL);
     /*pengruofeng debugmips*/
-	pReq->key = 1451024923;
+	//pReq->key = 1451024923;
+	pReq->key = (u32_t)time(NULL);
 	hbrc->session_client_key = pReq->key;
 		
     memset(pReq->u8res, 0x08, sizeof(pReq->u8res));
@@ -767,13 +766,14 @@ static int net_challage(struct heartbeat_route_client *hbrc)
 
 		hbs = hbrc->hbs_head[i];
 		hb_print(LOG_INFO,"try to connect heartbeat server(%s:%d)",inet_ntoa(hbs->hbs_ip),hbs->hbs_port);
-		if ((clientfd = hb_connect(inet_ntoa(hbs->hbs_ip),hbs->hbs_port)) < 0) {
+		if ((clientfd = hb_connect(inet_ntoa(hbs->hbs_ip),hbs->hbs_port)) == -1) {
 			/*Connect HeartBeat Fail!*/
 			sleep(5);
 			continue;
 		}
 
 		hbrc->hbrc_sockfd = clientfd;
+              printf("clientfd = %d", clientfd);
 		
 		do_challange(hbrc);
 
