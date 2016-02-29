@@ -678,23 +678,6 @@ static int parse_startup(struct heartbeat_route_client *hbrc)
 	parse_hb_dnsip(hbrc,hbAddr);
 
 	return 1;
-#if 0
-	struct in_addr tip;
-	inet_aton("127.0.0.1",&tip);
-	hb_print(LOG_INFO, " 111 tip (%s)",inet_ntoa(tip));
-	
-	inet_aton("www.baidu.com",&tip);
-	hb_print(LOG_INFO, " 2222 tip (%s)",inet_ntoa(tip));
-
-	inet_aton("255.255.255.256",&tip);
-	hb_print(LOG_INFO, " 3333 tip (%s)",inet_ntoa(tip));
-
-	inet_aton("255.255.255.255",&tip);
-	hb_print(LOG_INFO, " 4444 tip (%s)",inet_ntoa(tip));
-
-	
-#endif
-
 }
 #endif
 
@@ -882,8 +865,10 @@ static int net_echo(struct heartbeat_route_client *hbrc)
     THDR echo_hdr;
     THDR *pHdr = &echo_hdr;
 	int i = 0;
-	
+
+#if CVNWARE
 	DRV_AmtsGetEMac(emac);
+#endif
 	hb_print(LOG_INFO,"############ emac = %s",emac);
 
 #if 0
