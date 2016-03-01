@@ -7,6 +7,7 @@ DEBUG_CMP := y
 #DEBUG_LIB :=
 ENCRY := DES
 CVNWARE := 
+MTK := y
 
 ##########################  platform for x86 #######################
 ifeq ($(PLATFORM),x86)
@@ -32,7 +33,7 @@ endif
 
 ##########################  common for all #######################
 LDFLAGS +=
-CFLAGS = -I. 
+CFLAGS += -I. 
 ifeq ($(DEBUG_CMP),y)
 CFLAGS += -g -rdynamic 
 endif
@@ -52,6 +53,12 @@ TOPDIR := ../../..
 #include $(TOPDIR)/rules/libm.mk
 ROMFSDIR :=../../../../sdk/RT288x_SDK/source/romfs
 BINDIR := $(TOPDIR)/bin
+endif
+
+############################# register for MTK ###############
+ifeq ($(MTK),y)
+CFLAGS += -DMTK
+LIBEX += -lnvram-0.9.28
 endif
 
 HB_CLIENT_SRC := hb_client.c hb_core.c debug.c profile.c XORcode.c

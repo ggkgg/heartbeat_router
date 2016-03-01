@@ -260,6 +260,34 @@ static void print_notifyresp(THDR  *tHdr,TNOTIFYRESP* notifyResp)
 #endif
 }
 
+static int amts_getmac(char *emac)
+{
+	char ifr[32] = {0};
+	FILE *file;
+
+	file = popen("amts r emac","r");
+	if(!file) {
+		pclose(file);
+		return -1;
+	}
+
+	
+	if (fgets(ifr,32,file) != NULL) {
+		if(ifr[strlen(ifr)-1] == '\n') {
+			ifr[strlen(ifr)-1] = '\0';
+		}
+		sscanf(ifr,"success,%s",emac);
+	}
+	
+	if(emac == NULL) {
+		pclose(file);
+		return -1;
+	}
+
+	pclose(file);
+	return 0;	
+}
+
 
 int do_challange(struct heartbeat_route_client *hbrc)
 {
@@ -668,7 +696,7 @@ static int parse_startup(struct heartbeat_route_client *hbrc)
 	hbrc->hbrc_conf.retry_interval = Cfg.RetryInterval;
 
 	hb_print(LOG_INFO, "echo(%d) noecho(%d) retry_count(%d) retry_interval(%d)",
-	hbrc->hbrc_conf.echo_interval,hbrc->hbrc_conf.noecho_interval,hbrc->hbrc_conf.retry_count,hbrc->hbrc_conf.retry_interval);
+			hbrc->hbrc_conf.echo_interval,hbrc->hbrc_conf.noecho_interval,hbrc->hbrc_conf.retry_count,hbrc->hbrc_conf.retry_interval);
 	hb_print(LOG_INFO, "Cfg.DefaultAddr(%d) %s  Cfg.ExtAddr(%d) %s",strlen(Cfg.DefaultAddr),Cfg.DefaultAddr,strlen(Cfg.ExtAddr),Cfg.ExtAddr);
 	
 	strncpy(hbDefaultAddr,Cfg.DefaultAddr,strlen(Cfg.DefaultAddr));
@@ -681,10 +709,36 @@ static int parse_startup(struct heartbeat_route_client *hbrc)
 }
 #endif
 
+#if MTK
+static int parse_startup_mtk(struct heartbeat_route_client *hbrc)
+{
+
+	char *hbAddr;
+	char *hbDefaultAddr;
+
+	hbAddr = (char *)nvram_bufget(RT2860_NVRAM, "heartbeat_extaddress");
+	hbDefaultAddr = (char *)nvram_bufget(RT2860_NVRAM, "heartbeat_default_address");
+
+	hbrc->hbrc_conf.echo_interval = atoi(nvram_bufget(RT2860_NVRAM, "heartbeat_connect_interval"));
+	hbrc->hbrc_conf.noecho_interval = atoi(nvram_bufget(RT2860_NVRAM, "heartbeat_unconnect_inerval"));
+	hbrc->hbrc_conf.retry_count = atoi(nvram_bufget(RT2860_NVRAM, "heartbeat_retry_count"));
+	hbrc->hbrc_conf.retry_interval = atoi(nvram_bufget(RT2860_NVRAM, "heartbeat_retry_inerval"));
+
+	hb_print(LOG_INFO, "echo(%d) noecho(%d) retry_count(%d) retry_interval(%d)",
+			hbrc->hbrc_conf.echo_interval,hbrc->hbrc_conf.noecho_interval,hbrc->hbrc_conf.retry_count,hbrc->hbrc_conf.retry_interval);
+	hb_print(LOG_INFO, "Cfg.DefaultAddr(%d) %s	Cfg.ExtAddr(%d) %s",strlen(hbDefaultAddr),hbDefaultAddr,
+			strlen(hbAddr),hbAddr);
+
+	parse_hb_dnsip(hbrc,hbDefaultAddr);
+	parse_hb_dnsip(hbrc,hbAddr);
+	return 1;
+}
+#endif
+
+
+
 static int init_default_hbc_config(struct hbc_conf *conf)
 {
-	int i = 0;
-
 	conf->echo_interval = 20;
 	conf->retry_count = 3;
 	conf->retry_interval = 30;
@@ -696,6 +750,7 @@ static int init_hbrc(struct heartbeat_route_client** hbrcp)
 	struct heartbeat_route_client *hbrc;
 	struct hb_server* hbs;
 	struct hbc_conf* hbcConf;
+   	char emac[16] = {0}; 
 	
 	*hbrcp = (struct heartbeat_route_client *)malloc(sizeof(struct heartbeat_route_client));
 	hbrc = *hbrcp;
@@ -703,6 +758,7 @@ static int init_hbrc(struct heartbeat_route_client** hbrcp)
 
 
 	/* connect conf*/
+	hbrc->equipmentSn[0] = '\0';
 	hbrc->sendsn = 0;
 	hbrc->hbrc_sockfd = 0;
 	hbrc->session_client_key = 0;
@@ -722,14 +778,25 @@ static int init_hbrc(struct heartbeat_route_client** hbrcp)
 	//hbcConf = (struct hbc_conf *)malloc(sizeof(struct hbc_conf));
 	//init_default_hbc_config(hbcConf);	
 	//hbrc->hbrc_conf = hbcConf;
-
 	//(*hbrcp)->hbrc_conf = (struct hbc_conf *)malloc(sizeof(struct hbc_conf));
 	init_default_hbc_config(&hbrc->hbrc_conf);	
 
-
-	hbrc->hbrc_sm = HBRC_STRAT;
-
+#if CVNWARE
+	DRV_AmtsGetEMac(emac);
+#endif
 	
+#if MTK
+	if(amts_getmac(emac) < 0) {
+		hb_print(LOG_ERR,"get device mac error");
+		return -1;
+	}
+#endif
+
+	hb_print(LOG_INFO,"############ emac = %s",emac);
+	sscanf(emac,"%02x%02x%02x%02x%02x%02x",
+		&hbrc->equipmentSn[0],&hbrc->equipmentSn[1],&hbrc->equipmentSn[2],
+		&hbrc->equipmentSn[3],&hbrc->equipmentSn[4],&hbrc->equipmentSn[5]); 
+
 	return 0;
 }
 
@@ -866,30 +933,6 @@ static int net_echo(struct heartbeat_route_client *hbrc)
     THDR *pHdr = &echo_hdr;
 	int i = 0;
 
-#if CVNWARE
-	DRV_AmtsGetEMac(emac);
-#endif
-	hb_print(LOG_INFO,"############ emac = %s",emac);
-
-#if 0
-	sscanf(emac,"%02x%02x%02x%02x%02x%02x",
-		&emac_x[0],&emac_x[1],&emac_x[2],&emac_x[3],&emac_x[4],&emac_x[5]);	
-	
-	for(i=0;i<6;i++) {
-		hb_print(LOG_INFO,"############ emac_x[%d] = %02x",i,emac_x[i]);
-	}
-	
-	for(i=0;i<6;i++) {
-		equipmentSn[i] = emac_x[i];
-	}
-#else
-	sscanf(emac,"%02x%02x%02x%02x%02x%02x",
-		&equipmentSn[0],&equipmentSn[1],&equipmentSn[2],
-		&equipmentSn[3],&equipmentSn[4],&equipmentSn[5]); 
-#endif
-	//sprintf(equipmentSn,"%");
-	
-
 	memset(pHdr,0,sizeof(*pHdr));
     pHdr->flag = PKT_HDR_MAGIC;
     pHdr->pktlen = sizeof(TECHOREQ);
@@ -901,7 +944,7 @@ static int net_echo(struct heartbeat_route_client *hbrc)
     TECHOREQ *pReq = &echo_reqmsg;
 
     //strncpy(pReq->equipmentSn, equipmentSn, 6);
-    memcpy(pReq->equipmentSn, equipmentSn, 6);
+    memcpy(pReq->equipmentSn, hbrc->equipmentSn, 6);
 	//print_hdr(pHdr);
 	print_echoreq(pHdr,&echo_reqmsg);
 	
@@ -1393,7 +1436,9 @@ int main(int argc, char **argv)
 	}	
 	init_signals();
 
-	init_hbrc(&G.hbrc);
+	if( init_hbrc(&G.hbrc) < 0 ){
+		return -1;	
+	}	
 	hbrc = G.hbrc;
 
 	hbrc->hbrc_sm = HBRC_INVALID;
@@ -1401,16 +1446,22 @@ int main(int argc, char **argv)
 	parse_commandline(argc, argv);
 
 	hbrc->hbrc_sm = HBRC_STRAT;
-	parse_file(hbrc);
 #if CVNWARE
 	if(parse_startup(hbrc) < 0) {
 		return -1;
 	}
+#else
+#if MTK
+	if(parse_startup_mtk(hbrc) < 0) {
+		return -1;
+	}	
+#else
+	parse_file(hbrc);
+#endif
 #endif
 
 	hbrc->hbrc_sm = HBRC_INIT;
 
-	
 	while(1){
 		if ( HBRC_INIT == hbrc->hbrc_sm ){
 			if ( net_challage(hbrc) <= 0 ){

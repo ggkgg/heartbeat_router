@@ -1,6 +1,11 @@
 #if CVNWARE
 #include "cvnware.h"
 #endif
+
+#if MTK
+#include "nvram.h"
+#endif
+
 #include "common.h"
 #include "profile.h"
 #include "hb_core.h"
@@ -90,6 +95,7 @@ struct heartbeat_route_client {
 	int hbs_count;
 
 	/* connect param*/
+	char equipmentSn[6];
 	int hbrc_sockfd;
 	int sendsn;
 	u32_t session_server_key;
