@@ -1,154 +1,6 @@
 #include "hb_core.h"
 
-void print_hdr(THDR  *tHdr)
-{
-	hb_print(LOG_ERR,"[hdr] : flag(0x%04x),pktlen(%d),version(%d),pktType(%d),sn(%d),ext(0x%08x)", 
-		tHdr->flag,
-		tHdr->pktlen,
-		tHdr->version,
-		tHdr->pktType,
-		tHdr->sn,
-		tHdr->ext);
-}
-
-
-void print_chalreq(THDR  *tHdr, TCHALREQ  *chalReq)
-{
-
-	hb_print(LOG_ERR,"[challange resquest] -->> [hdr]:{flag(0x%04x),pktlen(%d),version(%d),pktType(%d),sn(%d),ext(0x%08x)} \
-[data]:{magic(0x%08x),key(%d),res(%02x%02x%02x%02x%02x%02x%02x%02x)}", 
-		tHdr->flag,
-		tHdr->pktlen,
-		tHdr->version,
-		tHdr->pktType,
-		tHdr->sn,
-		tHdr->ext,
-		chalReq->magic,
-		chalReq->key,
-		chalReq->u8res[0],chalReq->u8res[1],chalReq->u8res[2],chalReq->u8res[3],
-		chalReq->u8res[4],chalReq->u8res[5],chalReq->u8res[6],chalReq->u8res[7]);
-}
-
-
-void print_chalresp(THDR  *tHdr, TCHALRESP  *chalResp)
-{
-	u32_t server_key;
-    memcpy(&server_key, chalResp->key, sizeof(server_key));
-	u32_t magic;
-    memcpy(&magic, chalResp->magic, sizeof(magic));
-
-	
-	hb_print(LOG_ERR,"<<-- [challange response] [hdr]:{flag(0x%04x),pktlen(%d),version(%d),pktType(%d),sn(%d),ext(0x%08x)} \
-[data]:{sn(%d),magic(%08x),key(%d),res(0x%02x%02x%02x%02x%02x%02x)}", 
-		tHdr->flag,
-		tHdr->pktlen,
-		tHdr->version,
-		tHdr->pktType,
-		tHdr->sn,
-		tHdr->ext,
-		chalResp->client_sn,
-		magic,
-		server_key,
-		chalResp->u8res[0],chalResp->u8res[1],chalResp->u8res[2],chalResp->u8res[3],chalResp->u8res[4],chalResp->u8res[5]);
-}
-
-
-void print_echoreq(THDR  *tHdr, TECHOREQ  *echoReq)
-{
-	hb_print(LOG_ERR,"[echo resquest] -->> [hdr]:{flag(0x%04x),pktlen(%d),version(%d),pktType(%d),sn(%d),ext(0x%08x)} \
-[data]:{equipmentSn(0x%02x%02x%02x%02x%02x%02x)}", 
-		tHdr->flag,
-		tHdr->pktlen,
-		tHdr->version,
-		tHdr->pktType,
-		tHdr->sn,
-		tHdr->ext,
-		(unsigned char)echoReq->equipmentSn[0],(unsigned char)echoReq->equipmentSn[1],(unsigned char)echoReq->equipmentSn[2],
-		(unsigned char)echoReq->equipmentSn[3],(unsigned char)echoReq->equipmentSn[4],(unsigned char)echoReq->equipmentSn[5]);
-}
-
-
-void print_echoresp(THDR  *tHdr, TECHORESP *echoResp)
-{
-	hb_print(LOG_ERR,"<<-- [echo response] [hdr]:{flag(0x%04x),pktlen(%d),version(%d),pktType(%d),sn(%d),ext(0x%08x)} \
-[data]:{client_sn(%d)}", 
-		tHdr->flag,
-		tHdr->pktlen,
-		tHdr->version,
-		tHdr->pktType,
-		tHdr->sn,
-		tHdr->ext,
-		echoResp->client_sn);
-}
-
-
-void print_notifyreq(THDR  *tHdr,TNOTIFYREQ  *notifyReq)
-{
-	hb_print(LOG_ERR,"<<-- [notify resquest] [hdr]:{flag(0x%04x),pktlen(%d),version(%d),pktType(%d),sn(%d),ext(0x%08x)} \
-[data]:{equipmentSn(0x%c%c%c%c%c%c), command(%d), sendtime(%d)}", 
-		tHdr->flag,
-		tHdr->pktlen,
-		tHdr->version,
-		tHdr->pktType,
-		tHdr->sn,
-		tHdr->ext,
-		notifyReq->equipmentSn[0],notifyReq->equipmentSn[1],notifyReq->equipmentSn[2],
-		notifyReq->equipmentSn[3],notifyReq->equipmentSn[4],notifyReq->equipmentSn[5],
-		notifyReq->command,notifyReq->sendTime);
-}
-
-
-void print_notifyresp(THDR  *tHdr,TNOTIFYRESP* notifyResp)
-{
-	hb_print(LOG_ERR,"[notify response] -->> [hdr]:{flag(0x%04x),pktlen(%d),version(%d),pktType(%d),sn(%d),ext(0x%08x)} \
-[data]:{returnSn(%d), returnCode(%d)}", 
-		tHdr->flag,
-		tHdr->pktlen,
-		tHdr->version,
-		tHdr->pktType,
-		tHdr->sn,
-		tHdr->ext,
-		notifyResp->returnSn,notifyResp->returnCode);
-}
-
-int net_challange(struct heartbeat_route_client *hbrc)
-{
-
-	char msg[256] = {0};
-    THDR chal_header;
-    THDR *pHdr = &chal_header;
-
-	memset(pHdr,0,sizeof(*pHdr));
-    pHdr->flag = PKT_HDR_MAGIC;
-    pHdr->pktlen = sizeof(TCHALREQ);
-    pHdr->version = PKT_VERSION;
-    pHdr->pktType = PKT_CHALLENGE_REQUEST;
-    pHdr->sn = hbrc->sendsn++;
-
-    TCHALREQ chal_reqmsg;
-    TCHALREQ *pReq = &chal_reqmsg;
-    int msgLen = sizeof(TCHALREQ);
-
-
-    pReq->magic = PKT_CHALLENGE_MAGIC;
-	pReq->key = (u32_t)time(NULL);
-	hbrc->session_client_key = pReq->key;		
-    memset(pReq->u8res, 0x08, sizeof(pReq->u8res));
-
-	print_chalreq(pHdr,pReq);
-#if 0
-    des_encode((const void *)pReq, deschal, CHANLLENGE_KEY, bytes);
-    pHdr->pktlen = bytes;
-    send(fd, pHdr, sizeof(THDR), 0);
-    send(fd, deschal, bytes, 0);
-#else
-	memcpy(msg,pReq,msgLen);
-	msg[msgLen] = '\0';
-	net_send_challage_msg(hbrc,pHdr,msg,msgLen);
-
-#endif
-    return 1;
-}
+extern struct glob_arg G;
 
 
 /* 轮询心跳服务器，如果全部失败，返回-1*/
@@ -252,79 +104,6 @@ int search_hbs(struct heartbeat_route_client *hbrc)
 
 }
 
-int net_echo(struct heartbeat_route_client *hbrc)
-{
-   	char emac[16] = {0}; 
-	unsigned int emac_x[12] = {0};
-    THDR echo_hdr;
-    THDR *pHdr = &echo_hdr;
-	int i = 0;
-	char msg[256] = {0};
-
-	memset(pHdr,0,sizeof(*pHdr));
-    pHdr->flag = PKT_HDR_MAGIC;
-    pHdr->pktlen = sizeof(TECHOREQ);
-    pHdr->version = PKT_VERSION;
-    pHdr->pktType = PKT_ECHO_REQUEST;
-    pHdr->sn = hbrc->sendsn++;
-
-    TECHOREQ echo_reqmsg;
-    TECHOREQ *pReq = &echo_reqmsg;
-    int msgLen = sizeof(TECHOREQ);
-
-    memcpy(pReq->equipmentSn, hbrc->equipmentSn, 6);
-	print_echoreq(pHdr,&echo_reqmsg);
-	
-#if 0
-    XORencode(&echo_reqmsg, &secho_reqmsg, hbrc->session_server_key, bytes);
-
-    send(hbrc->hbrc_sockfd, pHdr, sizeof(THDR), 0);
-    send(hbrc->hbrc_sockfd, &secho_reqmsg, bytes, 0);
-#else
-	memcpy(msg,&echo_reqmsg,msgLen);
-	msg[msgLen] = '\0';
-	net_send_msg(hbrc,pHdr,msg,msgLen);
-#endif
-    return 1;
-}
-
-
-int net_notify(struct heartbeat_route_client *hbrc)
-{
-	THDR notifyRespHdr;
-	THDR *pHdr = &notifyRespHdr;
-	int clientSn = 0;
-	char msg[256] = {0};
-
-	memset(pHdr,0,sizeof(*pHdr));
-	pHdr->flag = PKT_HDR_MAGIC;
-	pHdr->version = PKT_VERSION;
-	pHdr->pktType = PKT_NOTIFY_RESPONSE;
-	pHdr->sn = hbrc->sendsn++;
-
-
-	TNOTIFYRESP  sendNotifyRespMsg;
-	memset(&sendNotifyRespMsg, 0, sizeof(sendNotifyRespMsg));
-	clientSn = pHdr->sn;
-	sendNotifyRespMsg.returnSn = clientSn;
-	sendNotifyRespMsg.returnCode = NOF_OK;
-
-	int msgLen = sizeof(TNOTIFYRESP);
-	print_notifyresp(pHdr,&sendNotifyRespMsg);
-
-#if 0
-	XORencode(pnotifyRespMsg, &sendNotifyRespMsg, hbrc->session_server_key, pHdr->pktlen);
-
-	send(hbrc->hbrc_sockfd, pHdr, sizeof(THDR), 0);
-	send(hbrc->hbrc_sockfd, &sendNotifyRespMsg, pHdr->pktlen, 0);
-#else
-	memcpy(msg,&sendNotifyRespMsg,msgLen);
-	msg[msgLen] = '\0';
-	net_send_msg(hbrc,pHdr,msg,msgLen);
-#endif
-	return 1;
-}
-
 int dispatch_notify(struct heartbeat_route_client* hbrc, char *pBuff)
 {
 
@@ -349,78 +128,180 @@ int dispatch_notify(struct heartbeat_route_client* hbrc, char *pBuff)
     return 1;
 }
 
-
-int proc_echoresp(struct heartbeat_route_client* hbrc, char *pBuff)
+void thread_echo(void *arg)
 {
-	THDR* pHdr;
-	TECHORESP Recho_reqmsg;
+	struct heartbeat_route_client* hbrc = (struct heartbeat_route_client*)arg;
+	//struct heartbeat_route_client* hbrc = (struct heartbeat_route_client*)&arg;
+	pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
+	pthread_mutex_t cond_mutex = PTHREAD_MUTEX_INITIALIZER;
+	struct	timespec timeout;
+	
+	while (1) {
+		if(!G.echoThread.pause_flag) {
+			net_echo(hbrc);
+		}
+		/* Sleep for config.crondinterval seconds... */
+		timeout.tv_sec = time(NULL) + hbrc->hbrc_conf.echo_interval;
+		//timeout.tv_sec = time(NULL) + 10;
+		timeout.tv_nsec = 0;
+	
+		/* Mutex must be locked for pthread_cond_timedwait... */
+		pthread_mutex_lock(&cond_mutex);
+		
+		/* Thread safe "sleep" */
+		pthread_cond_timedwait(&cond, &cond_mutex, &timeout);
 
-	pHdr = (THDR *)pBuff;
-	XORencode(pBuff + sizeof(THDR), &Recho_reqmsg, hbrc->session_client_key, pHdr->pktlen);
-	//print_hdr(pHdr);
-	print_echoresp(pHdr,&Recho_reqmsg);
-
+		/* No longer needs to be locked */
+		pthread_mutex_unlock(&cond_mutex);
+	}
 }
 
-int proc_notifyreq(struct heartbeat_route_client* hbrc, char *pBuff)
+void thread_recv(void *arg)
 {
-	THDR* pHdr;
-	TECHORESP Recho_reqmsg;
+	struct heartbeat_route_client* hbrc = (struct heartbeat_route_client*)arg;
 
-	pHdr = (THDR *)pBuff;
-	TNOTIFYREQ Notify_reqmsg;
-	XORencode(pBuff + sizeof(THDR), &Notify_reqmsg, hbrc->session_client_key, pHdr->pktlen);
-	//print_hdr(pHdr);
-	print_notifyreq(pHdr,&Notify_reqmsg);
+	while (1) {
+		int sock_fd = hbrc->hbrc_sockfd;
+		struct sockaddr_un clt_addr;
+		int clt_len = sizeof(struct sockaddr_un);	
+		int ret;
+		fd_set read_fds;
+		int maxsock;
+		struct timeval tv;
+		
+		if(G.recvThread.pause_flag) {
+			pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
+			pthread_mutex_t cond_mutex = PTHREAD_MUTEX_INITIALIZER;
+			struct	timespec timeout;	
+			/* Sleep for config.crondinterval seconds... */
+			timeout.tv_sec = time(NULL) + 10;
+			timeout.tv_nsec = 0;
+			
+			/* Mutex must be locked for pthread_cond_timedwait... */
+			pthread_mutex_lock(&cond_mutex);
+			
+			/* Thread safe "sleep" */
+			pthread_cond_timedwait(&cond, &cond_mutex, &timeout);
+			
+			/* No longer needs to be locked */
+			pthread_mutex_unlock(&cond_mutex);
 
-	dispatch_notify(hbrc,pBuff);
+			continue;
+		}
+		
+		/* 设置fd为非阻塞模式，执行select*/
+		set_noblock(sock_fd);
+		maxsock = sock_fd;
 
+		// timeout setting
+		tv.tv_sec = 30;
+		tv.tv_usec = 0;
 
-}
+		// initialize file descriptor set
+		FD_ZERO(&read_fds);
+		FD_SET(sock_fd, &read_fds);
 
+		hb_print(LOG_DEBUG, " select data !");
+		ret = select(maxsock + 1, &read_fds, NULL, NULL, &tv);
+		if (ret < 0) {
+			hb_print(LOG_ERR, "[Fail] create select !");
+			break;
+		} else if (ret == 0) {
+			hb_print(LOG_INFO, "select timeout!");
+			continue;
+		}
 
-int proc_packet(struct heartbeat_route_client* hbrc, char *pBuff, int readLen)
-{
-    THDR *pHdr;
-    pHdr = (THDR *)pBuff;
-
-    /*鏈澶勭悊鐨勬暟鎹暱搴*/
-    int dataLen = sizeof(THDR) + pHdr->pktlen;
-
-    if(pHdr->pktType == PKT_ECHO_RESPONSE)
-    {
-        proc_echoresp(hbrc, pBuff);
-    }
-    else if(pHdr->pktType == PKT_NOTIFY_REQUEST)
-    {
-        proc_notifyreq(hbrc, pBuff);
-    }
+		// check whether a new connection comes
+		if (FD_ISSET(sock_fd, &read_fds)) {
+			if (net_recv_msg(hbrc) < 0) {
+				debug(LOG_ERR, "[ECHO -> CLEAN] session have closed !");
+				G.recvThread.pause_flag = 1;
+				hbrc->hbrc_sm = HBRC_CLEAN;
+			}	
+			hb_print(LOG_DEBUG, " complete one recv data !");
+		}
+	}
 #if 0
-    else if(pHdr->pktType == PKT_NOTIFY_REQUEST)
+    if(!hbrc->activeRecvFlag)
     {
-        recv_notifyreq_fun(fd, pBuff);
-    }
-    else if(pHdr->pktType == PKT_NOTIFY_RESPONSE)
-    {
-        recv_notifyresp_fun(fd, pBuff);
+		hb_print(LOG_ERR, "[Fail] create select !");
     }
 #endif
-    else
-    {
-	    hb_print(LOG_ERR, "[Fail] invalid pocket!");
-    }
-	
-    int remainData = readLen - dataLen;
 
-    if(remainData > 0)
-    {
-        return remainData;
-    }
-    else
-    {
-        return 0;
-    }
-
-    return 0;
 }
+
+static int clean_hbrc(struct heartbeat_route_client* hbrc)
+{
+	/* init firest hbs */
+	hbrc->sendsn = 0;
+	hbrc->hbrc_sockfd = 0;
+	hbrc->session_client_key = 0;
+	hbrc->session_server_key = 0;
+
+	if(hbrc->gbuf) {
+		free(hbrc->gbuf);
+	}
+	hbrc->gbuf = NULL;
+	hbrc->dataLen = 0;
+	hbrc->maxLen = 0;
+}
+
+
+int hb_do_process(struct heartbeat_route_client* hbrc)
+{
+	hbrc->hbrc_sm = HBRC_INIT;
+	int ret;
+
+	while(1){
+		if ( HBRC_INIT == hbrc->hbrc_sm ){
+			if ( search_hbs(hbrc) <= 0 ){
+				debug(LOG_ERR, "[INIT -> IDLE] Failed to connect all heartbeat server!");
+				hbrc->hbrc_sm = HBRC_IDLE;
+				continue;
+			}
+			debug(LOG_ERR, "[INIT -> CHANLLENGE] ");
+			hbrc->hbrc_sm = HBRC_CHANLLENGE;
+		}
+		else if ( HBRC_IDLE == hbrc->hbrc_sm ) {
+			//sleep(hbrc->hbrc_conf.noecho_interval);
+			sleep(10);
+			debug(LOG_ERR, "[IDLE -> INIT] rest for %d(s), connect heartbeat server!",hbrc->hbrc_conf.noecho_interval);
+			hbrc->hbrc_sm = HBRC_INIT;
+		}
+		else if ( HBRC_CHANLLENGE == hbrc->hbrc_sm ) {
+			if(G.echoThread.echo_thpid == 0 ){
+				debug(LOG_INFO, "Creation of thread_echo!");
+				ret = pthread_create(&G.echoThread.echo_thpid, NULL, (void *)thread_echo, hbrc);
+				if (ret != 0) {
+					debug(LOG_ERR, "FATAL: Failed to create a new thread (thread_echo)!");
+				}
+			}
+			G.echoThread.pause_flag = 0;
+
+			if(G.recvThread.recv_thpid == 0 ){
+				debug(LOG_INFO, "Creation of thread_recv!");
+				ret = pthread_create(&G.recvThread.recv_thpid, NULL, (void *)thread_recv, hbrc);
+				if (ret != 0) {
+					debug(LOG_ERR, "FATAL: Failed to create a new thread (thread_recv)!");
+				}
+			}
+			G.recvThread.pause_flag = 0;
+			debug(LOG_ERR, "[CHANLLENGE -> ECHO] ");
+			hbrc->hbrc_sm = HBRC_ECHO;
+		}
+		else if ( HBRC_ECHO == hbrc->hbrc_sm ) {
+			sleep(30);
+		}		
+		else if ( HBRC_CLEAN == hbrc->hbrc_sm ) {
+			G.echoThread.pause_flag = 1;
+			G.recvThread.pause_flag = 1;
+			clean_hbrc(hbrc);
+			debug(LOG_ERR, "[CLEAN -> INIT] Pause echo thread and recv thread,reinit!");
+			hbrc->hbrc_sm = HBRC_INIT;
+		}
+		
+	}
+
+}
+
 
