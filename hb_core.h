@@ -43,6 +43,12 @@ struct heartbeat_route_client {
     int maxLen;
 	int activeRecvFlag;
 
+	/*function*/
+	void (*chall_encode) (const void *i_blk, void *o_blk, void *key, int len);
+	void (*chall_decode) (const void *i_blk, void *o_blk, void *key, int len);
+	int (*msg_encode) (void *i_block,  void *o_block, u32_t key, u32_t len);
+	int (*msg_decode) (void *i_block,  void *o_block, u32_t key, u32_t len);
+
 };
 
 /* 心跳路由客户端的服务器列表 */

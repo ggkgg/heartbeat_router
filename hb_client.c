@@ -337,6 +337,12 @@ static int init_hbrc(struct heartbeat_route_client** hbrcp)
 	hbrc->dataLen = 0;
 	hbrc->maxLen = 0;
 
+	/*function*/
+	hbrc->chall_encode = des_encode;
+	hbrc->chall_decode = des_decode;
+	hbrc->msg_encode = XORencode;
+	hbrc->msg_decode = XORencode;
+
 	/* init hbs  */
 	hbrc->hbs_count = 0;
 	hbrc->hbs_head = (struct hb_server **)malloc(MAX_HB_COUNT*sizeof(struct hb_server *));
@@ -406,7 +412,7 @@ int main(int argc, char **argv)
 #endif
 #endif
 
-	hb_do_process(hbrc);	
+	hb_do_process(hbrc);
 exit:
 	return 0;
 }

@@ -9,6 +9,8 @@
 #include "profile.h"
 #include "hb_core.h"
 #include "net.h"
+#include "des.h"
+#include "xorcode.h"
 
 
 #define DEFAULT_CONFIG_PATH "./hb_client.conf"

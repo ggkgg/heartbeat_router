@@ -178,7 +178,8 @@ int net_recv_challage_msg(struct heartbeat_route_client* hbrc,THDR *pHdr,TCHALRE
 	pHdr = (THDR *)revBuffer;
 	memcpy(pHdr,revBuffer,sizeof(THDR));
 	
-	des_decode((void *)(revBuffer + sizeof(THDR)), pResp, CHANLLENGE_KEY, sizeof(*pResp));
+	//des_decode((void *)(revBuffer + sizeof(THDR)), pResp, CHANLLENGE_KEY, sizeof(*pResp));
+	hbrc->chall_decode((void *)(revBuffer + sizeof(THDR)), pResp, CHANLLENGE_KEY, sizeof(*pResp));
 	return 0;
 }
 
@@ -197,7 +198,8 @@ int net_send_challage_msg(struct heartbeat_route_client *hbrc,THDR* pHdr,char* p
 
 	pHdr->pktlen = msgLen;
     memset(deschal, 0, sizeof(deschal));
-    des_encode((const void *)pMsg, deschal, CHANLLENGE_KEY, msgLen);
+    //des_encode((const void *)pMsg, deschal, CHANLLENGE_KEY, msgLen);
+    hbrc->chall_encode((const void *)pMsg, deschal, CHANLLENGE_KEY, msgLen);
     
     send(fd, pHdr, sizeof(THDR), 0);
     send(fd, deschal, msgLen, 0);
@@ -362,7 +364,8 @@ int net_send_msg(struct heartbeat_route_client *hbrc,THDR* pHdr,char* pMsg,int m
 	char encodeMsg[256]={0};
 	pHdr->pktlen = msgLen;
 
-	XORencode(pMsg, encodeMsg, hbrc->session_server_key, pHdr->pktlen);
+	//XORencode(pMsg, encodeMsg, hbrc->session_server_key, pHdr->pktlen);
+	hbrc->msg_encode(pMsg, encodeMsg, hbrc->session_server_key, pHdr->pktlen);
 
 	send(fd, pHdr, sizeof(THDR), 0);
 	send(fd, encodeMsg, pHdr->pktlen, 0);
@@ -375,7 +378,8 @@ int proc_echoresp(struct heartbeat_route_client* hbrc, char *pBuff)
 	TECHORESP Recho_reqmsg;
 
 	pHdr = (THDR *)pBuff;
-	XORencode(pBuff + sizeof(THDR), &Recho_reqmsg, hbrc->session_client_key, pHdr->pktlen);
+	//XORencode(pBuff + sizeof(THDR), &Recho_reqmsg, hbrc->session_client_key, pHdr->pktlen);
+	hbrc->msg_decode(pBuff + sizeof(THDR), &Recho_reqmsg, hbrc->session_client_key, pHdr->pktlen);
 	print_echoresp(pHdr,&Recho_reqmsg);
 }
 
@@ -386,7 +390,8 @@ int proc_notifyreq(struct heartbeat_route_client* hbrc, char *pBuff)
 
 	pHdr = (THDR *)pBuff;
 	TNOTIFYREQ Notify_reqmsg;
-	XORencode(pBuff + sizeof(THDR), &Notify_reqmsg, hbrc->session_client_key, pHdr->pktlen);
+	//XORencode(pBuff + sizeof(THDR), &Notify_reqmsg, hbrc->session_client_key, pHdr->pktlen);
+	hbrc->msg_decode(pBuff + sizeof(THDR), &Notify_reqmsg, hbrc->session_client_key, pHdr->pktlen);
 	print_notifyreq(pHdr,&Notify_reqmsg);
 
 	/*分发通知消息*/
