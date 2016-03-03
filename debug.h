@@ -22,5 +22,4 @@ struct debug_info {
 
 /** @internal */
 void _debug(char *filename, int line, int level, char *format, ...);
-
 #endif /* _DEBUG_H_ */

@@ -61,7 +61,7 @@ CFLAGS += -DMTK
 LIBEX += -lnvram-0.9.28
 endif
 
-HB_CLIENT_SRC := hb_client.c hb_core.c debug.c profile.c XORcode.c
+HB_CLIENT_SRC := hb_client.c hb_core.c debug.c profile.c XORcode.c net.c
 
 ifeq ($(ENCRY),DES)
 HB_CLIENT_SRC += des.c deskey.c
