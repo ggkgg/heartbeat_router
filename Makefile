@@ -1,4 +1,9 @@
 HB_CLIENT = hb_client
+SRC = src
+OBJ = obj
+LIB = lib
+
+$(shell mkdir obj)
 
 ####### x86 mips463 mips342 ######
 PLATFORM := mips342
@@ -13,7 +18,7 @@ MTK := y
 ifeq ($(PLATFORM),x86)
 CC = gcc
 STRIP = strip
-LIBS += -L. -L/usr/lib64
+LIBS += -L./$(LIB) -L/usr/lib64
 endif
 
 ##########################  platform for mips463 #######################
@@ -33,7 +38,7 @@ endif
 
 ##########################  common for all #######################
 LDFLAGS +=
-CFLAGS += -I. 
+CFLAGS += -I./$(SRC)
 ifeq ($(DEBUG_CMP),y)
 CFLAGS += -g -rdynamic 
 endif
@@ -61,10 +66,10 @@ CFLAGS += -DMTK
 LIBEX += -lnvram-0.9.28
 endif
 
-HB_CLIENT_SRC := hb_client.c hb_core.c debug.c profile.c XORcode.c net.c
+HB_CLIENT_CSRCS := $(SRC)/hb_client.c $(SRC)/hb_core.c $(SRC)/debug.c $(SRC)/profile.c $(SRC)/XORcode.c $(SRC)/net.c
 
 ifeq ($(ENCRY),DES)
-HB_CLIENT_SRC += des.c deskey.c
+HB_CLIENT_CSRCS += $(SRC)/des.c $(SRC)/deskey.c
 CFLAGS += -DCRYTO_DES
 endif
 
@@ -74,18 +79,27 @@ endif
 #CFLAGS += -DDEBUG_LIB
 #endif
 
+HB_CLIENT_COBJS := $(patsubst $(SRC)/%.c,$(OBJ)/%.o,$(HB_CLIENT_CSRCS))  
+
 all:$(HB_CLIENT)
 	$(STRIP) $(HB_CLIENT)
 	#cp -f hb_client $(BINDIR)
 
-$(HB_CLIENT):  
-	$(CC) -o $@ $(HB_CLIENT_SRC) $(CFLAGS) $(LDFLAGS) $(LIBS) $(LIBEX)
-
+$(HB_CLIENT): $(HB_CLIENT_COBJS) 
+	$(CC) -o $@ $(HB_CLIENT_COBJS) $(CFLAGS) $(LDFLAGS) $(LIBS) $(LIBEX)
+	
+	
+$(DMS_DEV): $(COBJS) $(CXXOBJS)  
+	$(LINKCC) $(COBJS) $(CXXOBJS) $(LIBA) -o $@ $(LIBS) $(LIBEX)
+	
 $(AUTH_CLI):  
 	$(CC) -o $@ auth_cli.c $(CFLAGS) $(LIBS) $(LIBEX)	
 	
 $(AUTH_CORE):
 	$(CC) -o libauth_core.so $(AUTH_CORE_SRC) -fPIC -shared $(CFLAGS) $(LDFLAGS)
+
+./obj/%.o: src/%.c
+	$(CCOMPILE) -o $@ $<
 	
 
 IPC_CLIENT_LIBEX = -lauth_core -lpthread
@@ -98,7 +112,8 @@ $(AUTH_MARKET):
 	
 .PHONY: clean backup $(HB_CLIENT)
 clean: 
-	rm -f $(HB_CLIENT) *.o
+	rm -rf obj
+	rm -f $(HB_CLIENT)
 
 HFILE := cJSON.h debug.h dms_dev.h dms_zigbee.h InnerClient.h list.h utils.h wireless.h
 backup:
