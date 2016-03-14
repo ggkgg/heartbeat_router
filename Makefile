@@ -20,23 +20,34 @@ CC = gcc
 STRIP = strip
 LIBS += -L./$(LIB) -L/usr/lib64
 endif
+##########################################################################
 
 ##########################  platform for mips463 #######################
 ifeq ($(PLATFORM),mips463)
 CC = /opt/buildroot-gcc463/usr/bin/mipsel-buildroot-linux-uclibc-gcc
 STRIP = /opt/buildroot-gcc463/usr/bin/mipsel-buildroot-linux-uclibc-strip
-LIBS +=-L. -L/opt/buildroot-gcc463/usr/mipsel-buildroot-linux-uclibc/sysroot/lib/
+LIBS += -L./$(LIB) -L/opt/buildroot-gcc463/usr/mipsel-buildroot-linux-uclibc/sysroot/lib/
 endif
+##########################################################################
 
 ##########################  platform for mips342 #######################
 ifeq ($(PLATFORM),mips342)
 CC = /opt/buildroot-gcc342/bin/mipsel-linux-gcc
 STRIP = /opt/buildroot-gcc342/bin/mipsel-linux-strip
-LIBS +=-L. -L/opt/buildroot-gcc342/lib/
+LIBS += -L./$(LIB) -L/opt/buildroot-gcc342/lib/
 endif
+#########################################################################
+
 
 
 ##########################  common for all #######################
+HB_CLIENT_CSRCS := $(SRC)/hb_client.c $(SRC)/hb_core.c $(SRC)/debug.c $(SRC)/profile.c $(SRC)/XORcode.c $(SRC)/net.c
+
+ifeq ($(ENCRY),DES)
+HB_CLIENT_CSRCS += $(SRC)/des.c $(SRC)/deskey.c
+CFLAGS += -DCRYTO_DES
+endif
+
 LDFLAGS +=
 CFLAGS += -I./$(SRC)
 ifeq ($(DEBUG_CMP),y)
@@ -48,6 +59,7 @@ LIBEX += -lpthread
 LIBA =
 
 BINDIR := ./
+##########################################################################
 
 ############################# register for cvnware ###############
 ifeq ($(CVNWARE),y)
@@ -59,19 +71,14 @@ TOPDIR := ../../..
 ROMFSDIR :=../../../../sdk/RT288x_SDK/source/romfs
 BINDIR := $(TOPDIR)/bin
 endif
+##########################################################################
 
 ############################# register for MTK ###############
 ifeq ($(MTK),y)
 CFLAGS += -DMTK
 LIBEX += -lnvram-0.9.28
 endif
-
-HB_CLIENT_CSRCS := $(SRC)/hb_client.c $(SRC)/hb_core.c $(SRC)/debug.c $(SRC)/profile.c $(SRC)/XORcode.c $(SRC)/net.c
-
-ifeq ($(ENCRY),DES)
-HB_CLIENT_CSRCS += $(SRC)/des.c $(SRC)/deskey.c
-CFLAGS += -DCRYTO_DES
-endif
+##########################################################################
 
 #ifdef DEBUG_LIB
 #HB_CLIENT_SRC += debug.c
