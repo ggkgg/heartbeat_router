@@ -19,6 +19,14 @@
 #define PKT_NOTIFY_REQUEST          105
 #define PKT_NOTIFY_RESPONSE         106
 
+#define PKT_REPORT_REQUEST          111
+#define PKT_REPORT_RESPONSE         112
+
+#define PKT_ISSUE_REQUEST           113
+#define PKT_ISSUE_RESPONSE          114
+
+
+
 struct header
 {
     u16_t flag;
@@ -64,9 +72,31 @@ struct notify_request
 
 struct notify_response
 {
-    u16_t  returnSn;
+    u16_t returnSn;
     u16_t returnCode;
 };
+
+struct report_request
+{
+	u32_t vendor;
+};
+
+struct report_response
+{
+    u16_t client_sn;
+};
+
+struct issue_request
+{
+	u32_t vendor;
+};
+
+struct issue_response
+{
+    u16_t client_sn;
+    u16_t response_code;
+};
+
 
 enum resp_code
 {
@@ -98,6 +128,9 @@ typedef struct echo_request  TECHOREQ;
 typedef struct echo_response  TECHORESP;
 typedef struct notify_request  TNOTIFYREQ;
 typedef struct notify_response  TNOTIFYRESP;
-
+typedef struct report_request TREPORTREQ;
+typedef struct report_response TREPOERTRESP;
+typedef struct issue_request TISSUEREQ;
+typedef struct issue_response TISSUERESP;
 
 #endif

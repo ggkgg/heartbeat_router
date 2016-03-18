@@ -41,7 +41,7 @@ endif
 
 
 ##########################  common for all #######################
-HB_CLIENT_CSRCS := $(SRC)/hb_client.c $(SRC)/hb_core.c $(SRC)/debug.c $(SRC)/profile.c $(SRC)/XORcode.c $(SRC)/net.c
+HB_CLIENT_CSRCS := $(SRC)/hb_client.c $(SRC)/hb_core.c $(SRC)/debug.c $(SRC)/profile.c $(SRC)/XORcode.c $(SRC)/net.c $(SRC)/business.c
 
 ifeq ($(ENCRY),DES)
 HB_CLIENT_CSRCS += $(SRC)/des.c $(SRC)/deskey.c

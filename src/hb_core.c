@@ -141,8 +141,8 @@ void thread_echo(void *arg)
 			net_echo(hbrc);
 		}
 		/* Sleep for config.crondinterval seconds... */
-		timeout.tv_sec = time(NULL) + hbrc->hbrc_conf.echo_interval;
-		//timeout.tv_sec = time(NULL) + 10;
+		//timeout.tv_sec = time(NULL) + hbrc->hbrc_conf.echo_interval;
+		timeout.tv_sec = time(NULL) + 20;
 		timeout.tv_nsec = 0;
 	
 		/* Mutex must be locked for pthread_cond_timedwait... */
@@ -291,6 +291,11 @@ int hb_do_process(struct heartbeat_route_client* hbrc)
 		}
 		else if ( HBRC_ECHO == hbrc->hbrc_sm ) {
 			sleep(30);
+
+#if 1		
+			u32_t vendor = 0x11223344;
+			business_report(hbrc,vendor);
+#endif
 		}		
 		else if ( HBRC_CLEAN == hbrc->hbrc_sm ) {
 			G.echoThread.pause_flag = 1;
