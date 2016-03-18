@@ -129,7 +129,7 @@ typedef struct echo_response  TECHORESP;
 typedef struct notify_request  TNOTIFYREQ;
 typedef struct notify_response  TNOTIFYRESP;
 typedef struct report_request TREPORTREQ;
-typedef struct report_response TREPOERTRESP;
+typedef struct report_response TREPORTRESP;
 typedef struct issue_request TISSUEREQ;
 typedef struct issue_response TISSUERESP;
 

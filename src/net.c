@@ -425,6 +425,10 @@ int proc_packet(struct heartbeat_route_client* hbrc, char *pBuff, int readLen)
         recv_notifyresp_fun(fd, pBuff);
     }
 #endif
+    else if(pHdr->pktType == PKT_REPORT_RESPONSE)
+    {
+        proc_reportresp(hbrc, pBuff);
+    }
     else
     {
 	    hb_print(LOG_ERR, "[Fail] invalid pocket!");
