@@ -6,13 +6,16 @@ LIB = lib
 $(shell mkdir obj)
 
 ####### x86 mips463 mips342 ######
-PLATFORM := mips342
+PLATFORM := x86
 
 DEBUG_CMP := y
 #DEBUG_LIB :=
 ENCRY := DES
 CVNWARE := 
+
+ifneq ($(PLATFORM),x86)
 MTK := y
+endif
 
 ##########################  platform for x86 #######################
 ifeq ($(PLATFORM),x86)
@@ -92,13 +95,17 @@ endif
 
 HB_CLIENT_COBJS := $(patsubst $(SRC)/%.c,$(OBJ)/%.o,$(HB_CLIENT_CSRCS))  
 
-all:$(HB_CLIENT)
+all:$(HB_CLIENT) test
 	$(STRIP) $(HB_CLIENT)
-	#cp -f hb_client $(BINDIR)
-
+	
 $(HB_CLIENT): $(HB_CLIENT_COBJS) 
 	$(CC) -o $@ $(HB_CLIENT_COBJS) $(CFLAGS) $(LDFLAGS) $(LIBS) $(LIBEX)
 	
+test: ipc_udpcli1
+	$(STRIP) ipc_udpcli1
+
+ipc_udpcli1: 
+	$(CC) -o $@ test/ipc_udpcli1.c $(SRC)/cJSON.c -I./test -I$(SRC) -lm
 	
 $(DMS_DEV): $(COBJS) $(CXXOBJS)  
 	$(LINKCC) $(COBJS) $(CXXOBJS) $(LIBA) -o $@ $(LIBS) $(LIBEX)
@@ -121,10 +128,11 @@ $(AUTH_MARKET):
 	$(CC) -o $@ auth_market.c $(CFLAGS) $(LIBS) $(LIBEX)
 
 	
-.PHONY: clean backup $(HB_CLIENT)
+.PHONY: clean backup $(HB_CLIENT) $(TEST)
 clean: 
 	rm -rf obj
 	rm -f $(HB_CLIENT)
+	rm -f ipc_udpcli1
 
 HFILE := cJSON.h debug.h dms_dev.h dms_zigbee.h InnerClient.h list.h utils.h wireless.h
 backup:

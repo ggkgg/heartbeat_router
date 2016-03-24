@@ -82,7 +82,7 @@ void thread_recv_udpmsg(void *data)
 }
 
 
-int udp_server(int argc, int port)
+int udp_server(int port)
 {
 	int				udpfd,nready, maxfdp1;
 	fd_set				rset;
@@ -127,5 +127,4 @@ int udp_server(int argc, int port)
 		}
 	}
 }
-/* end udpservselect02 */
 

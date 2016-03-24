@@ -2,13 +2,7 @@
 
 struct glob_arg G;
 
-#define DEBUG_DES 0
-#define DEBUG_CONF 1
-#define DEBUG_RESOLVE 1
-#define DEBUG_NETWORK 1
-#define DEBUG_ECHO 1
-#define DEBUG_XOR 1
-#define DEBUG_NOTIFY 1
+#define DEBUG_IPC 1
 
 #if 0
 static u32_t session_client_key = 0;
@@ -413,8 +407,12 @@ int main(int argc, char **argv)
 #endif
 
 
-	udp_server();
+#if DEBUG_IPC
+	udp_server(10400);
+#else
 	hb_do_process(hbrc);
+#endif
+
 exit:
 	return 0;
 }
