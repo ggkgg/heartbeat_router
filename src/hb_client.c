@@ -412,6 +412,8 @@ int main(int argc, char **argv)
 #endif
 #endif
 
+
+	udp_server();
 	hb_do_process(hbrc);
 exit:
 	return 0;
