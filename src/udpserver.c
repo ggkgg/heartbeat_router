@@ -1,10 +1,3 @@
-#include <sys/socket.h>	/* basic socket definitions */
-#include <arpa/inet.h> /* sockaddr_in INADDR_ANY*/
-#include <sys/select.h>	/* for convenience */
-#include <pthread.h>
-#include <errno.h>
-
-
 #include "udpserver.h"
 
 #if 0
@@ -30,17 +23,16 @@ int net_socket(int family, int type, int protocol)
 	int		n;
 
 	if ( (n = socket(family, type, protocol)) < 0)
-		printf("socket error");
+		hb_print(LOG_ERR,"socket error");
 	return(n);
 }
 
 
 
-void
-net_bind(int fd, const struct sockaddr *sa, socklen_t salen)
+void net_bind(int fd, const struct sockaddr *sa, socklen_t salen)
 {
 	if (bind(fd, sa, salen) < 0)
-		printf("bind error\n");
+		hb_print(LOG_ERR,"bind error\n");
 }
 
 
@@ -50,37 +42,119 @@ int net_recvfrom(int fd, void *ptr, size_t nbytes, int flags,
 	ssize_t		n;
 
 	if ( (n = recvfrom(fd, ptr, nbytes, flags, sa, salenptr)) < 0)
-		printf("recvfrom error\n");
+		hb_print(LOG_ERR,"recvfrom error\n");
 	return(n);
 }
 
-void
-net_sendto(int fd, const void *ptr, size_t nbytes, int flags,
+void net_sendto(int fd, const void *ptr, size_t nbytes, int flags,
 	   const struct sockaddr *sa, socklen_t salen)
 {
 	if (sendto(fd, ptr, nbytes, flags, sa, salen) != (ssize_t)nbytes)
-		printf("sendto error\n");
+		hb_print(LOG_ERR,"sendto error\n");
 }
 
+#if 0
 void thread_recv_udpmsg(void *data)
 {
-	int udpfd,*pudpfd;
-	struct sockaddr_in cliaddr;
+	int udpfd,*pudpfd;;
 	char mesg[MAXLINE];
-	int			n;
 	socklen_t	len;
+	ipc_udp_client_st *ipCli;
 
+
+	ipCli = (ipc_udp_client_st *)malloc(sizeof(ipc_udp_client_st));
+	bzero(ipCli,sizeof(ipc_udp_client_st));
+	ipCli->recvMsg = (char *)malloc(MAXLINE*sizeof(char));
+	
 	pudpfd = (int *)data;
-	udpfd = *pudpfd;
-	len = sizeof(cliaddr);
-	n = net_recvfrom(udpfd, mesg, MAXLINE, 0, (struct sockaddr*) &cliaddr, &len);
+	ipCli->listenfd = *pudpfd;
+	len = sizeof(ipCli->cliAddr);
+	ipCli->recvMsgLen = net_recvfrom(ipCli->listenfd, ipCli->recvMsg, MAXLINE, 0, (struct sockaddr*) &ipCli->cliAddr, &len);
 
-	call_ipchelper(udpfd,&cliaddr,mesg);
+	hb_print(LOG_INFO,"recv msg coming client (%s:%d)",inet_ntoa(ipCli->cliAddr.sin_addr),ipCli->cliAddr.sin_port);
+	call_ipchelper(ipCli);
 
-	net_sendto(udpfd, mesg, n, 0, (struct sockaddr*) &cliaddr, len);
 
+	ipCli->sendMsg = ipCli->recvMsg;
+	ipCli->sendMsgLen = ipCli->recvMsgLen; 
+	net_sendto(ipCli->listenfd, ipCli->sendMsg, ipCli->sendMsgLen, 0, (struct sockaddr*) &ipCli->cliAddr, len);
+
+	if(!ipCli->recvMsg)
+		free(ipCli->recvMsg);
+	if(!ipCli->sendMsg)
+		free(ipCli->sendMsg);
+	free(ipCli);
+}
+#endif
+
+void delete_ipcli(ipc_udp_client_st *ipCli)
+{
+	if(!ipCli)
+		return;
+	
+	if(ipCli->recvMsg)
+		free(ipCli->recvMsg);
+	if(ipCli->sendMsg)
+		free(ipCli->sendMsg);
+	if(ipCli->jsonMsg)
+		cJSON_Delete(ipCli->jsonMsg);
+	if(ipCli->jsonModule)
+		free(ipCli->jsonModule);
+	if(ipCli->jsonCmdName)
+		free(ipCli->jsonCmdName);
+	if(ipCli->jsonVendor)
+		free(ipCli->jsonVendor);
+
+	free(ipCli);
 }
 
+int process_recvmsg(int udpfd)
+{
+	char mesg[MAXLINE];
+	socklen_t	len;
+	ipc_udp_client_st *ipCli;
+
+
+	ipCli = (ipc_udp_client_st *)malloc(sizeof(ipc_udp_client_st));
+	bzero(ipCli,sizeof(ipc_udp_client_st));
+	ipCli->recvMsg = (char *)malloc(MAXLINE*sizeof(char));
+	
+	ipCli->listenfd = udpfd;
+	len = sizeof(ipCli->cliAddr);
+	ipCli->recvMsgLen = net_recvfrom(ipCli->listenfd, ipCli->recvMsg, MAXLINE, 0, (struct sockaddr*)&ipCli->cliAddr, &len);
+
+
+	printf("ipCli->recvMsg(%d)(%s)\n",ipCli->recvMsgLen,ipCli->recvMsg);
+
+	if (call_ipchelper(ipCli) < 0) {
+		hb_print(LOG_ERR,"parse json udp packet error!");
+		delete_ipcli(ipCli);
+		return -1;
+	}
+
+	ipCli->sendMsg = ipCli->recvMsg;
+	ipCli->sendMsgLen = ipCli->recvMsgLen;
+	printf("ipCli->sendMsg(%d)(%s)\n",ipCli->sendMsgLen,ipCli->sendMsg);
+
+	net_sendto(ipCli->listenfd, ipCli->sendMsg, ipCli->sendMsgLen, 0, (struct sockaddr*) &ipCli->cliAddr, len);
+	delete_ipcli(ipCli);
+#if 0
+	hb_print(LOG_INFO,"recv msg coming client (%s:%d)",inet_ntoa(ipCli->cliAddr.sin_addr),ipCli->cliAddr.sin_port);
+	call_ipchelper(ipCli);
+
+
+	ipCli->sendMsg = ipCli->recvMsg;
+	ipCli->sendMsgLen = ipCli->recvMsgLen; 
+	net_sendto(ipCli->listenfd, ipCli->sendMsg, ipCli->sendMsgLen, 0, (struct sockaddr*) &ipCli->cliAddr, len);
+
+	if(!ipCli->recvMsg)
+		free(ipCli->recvMsg);
+	if(!ipCli->sendMsg)
+		free(ipCli->sendMsg);
+	free(ipCli);
+#endif
+	return 0;
+}
 
 int udp_server(int port)
 {
@@ -108,21 +182,24 @@ int udp_server(int port)
 			if (errno == EINTR)
 				continue;		/* back to for() */
 			else
-				printf("select error");
+				hb_print(LOG_ERR,"select error");
 		}
 
 
 		if (FD_ISSET(udpfd, &rset)) {
-
-			
+#if 0
 			ret=pthread_create(&pth_ids,NULL,(void *)thread_recv_udpmsg,(void*)&udpfd);
 			if(ret!=0)
 			{
-				printf ("Create pthread error!\n");
+				hb_print(LOG_ERR,"Create pthread error!\n");
 				exit(1);
 			}
 			pthread_detach(pth_ids);
-
+#endif
+			if (process_recvmsg(udpfd) < 0) {
+				hb_print(LOG_ERR,"udp packet error!");
+				continue;
+			}
 
 		}
 	}

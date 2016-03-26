@@ -1,6 +1,8 @@
 #include "hb_core.h"
 
 
+extern struct glob_arg G;
+
 static void print_reportreq(THDR  *tHdr, TREPORTREQ  *reportReq)
 {
 	hb_print(LOG_ERR,"[report resquest] -->> [hdr]:{flag(0x%04x),pktlen(%d),version(%d),pktType(%d),sn(%d),ext(0x%08x)} \
@@ -28,8 +30,9 @@ static void print_reportresp(THDR  *tHdr, TREPORTRESP *reportResp)
 }
 
 
-int business_report(struct heartbeat_route_client *hbrc,u32_t vendor)
+int business_report(u32_t vendor,char* vendorMsg,int vendorMsgLen)
 {
+	struct heartbeat_route_client *hbrc = G.hbrc;
    	char emac[16] = {0}; 
 	unsigned int emac_x[12] = {0};
     THDR echo_hdr;
@@ -39,7 +42,6 @@ int business_report(struct heartbeat_route_client *hbrc,u32_t vendor)
 
 	memset(pHdr,0,sizeof(*pHdr));
     pHdr->flag = PKT_HDR_MAGIC;
-    pHdr->pktlen = sizeof(TREPORTREQ);
     pHdr->version = PKT_VERSION;
     pHdr->pktType = PKT_REPORT_REQUEST;
     pHdr->sn = hbrc->sendsn++;
@@ -48,10 +50,14 @@ int business_report(struct heartbeat_route_client *hbrc,u32_t vendor)
     TREPORTREQ *pReq = &report_reqmsg;
     int msgLen = sizeof(TREPORTREQ);
 
-	pReq->vendor = vendor;
+	memcpy((char *)&pReq->vendor,(char *)&vendor,4);
+	//pReq->vendor = vendor;
 	print_reportreq(pHdr,pReq);
 
-	memcpy(msg,pReq,msgLen);
+	memcpy(msg,pReq,msgLen);	
+	memcpy(msg+msgLen,vendorMsg,vendorMsgLen);
+	msgLen += vendorMsgLen;
+
 	msg[msgLen] = '\0';
 	net_send_msg(hbrc,pHdr,msg,msgLen);
 

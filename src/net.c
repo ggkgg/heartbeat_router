@@ -355,13 +355,15 @@ int net_send_msg(struct heartbeat_route_client *hbrc,THDR* pHdr,char* pMsg,int m
 {
 	int fd = hbrc->hbrc_sockfd;
 
+	hb_print(LOG_ERR,"pMsg (%s)",pMsg);
+
     if(fd <= 0)
     {
-        printf("%s error fd = %d\n", __FUNCTION__, fd);
+        hb_print(LOG_ERR,"send msg error,(error fd = %d)",fd);
         return -1;
     }
 
-	char encodeMsg[256]={0};
+	char encodeMsg[1024]={0};
 	pHdr->pktlen = msgLen;
 
 	//XORencode(pMsg, encodeMsg, hbrc->session_server_key, pHdr->pktlen);

@@ -10,6 +10,7 @@
 #include "cJSON.h"
 
 
+
 int main(int argc, char **argv)
 {
     printf("This is a UDP client\n");
@@ -35,9 +36,9 @@ int main(int argc, char **argv)
     int len = sizeof(addr);
     while (1)
     {
-        gets(buff);
+//        gets(buff);
         int n;
-/*
+
 		cJSON *root,*value;
 		
 		char *out;
@@ -45,26 +46,23 @@ int main(int argc, char **argv)
 		root=cJSON_CreateObject();
 
 
-		cJSON_AddStringToObject(root,"cmd_url","/zigbeeservice/device");
+		cJSON_AddStringToObject(root,"cmd_url","/heartbeatclient/business");
 
-		cJSON_AddStringToObject(root,"cmd_name","setconf");
+		cJSON_AddStringToObject(root,"cmd_name","report");
 
-		cJSON_AddStringToObject(root,"node_mac","xxxxxxxx");
+		cJSON_AddStringToObject(root,"vendor","myed");
 		
 		cJSON_AddItemToObject(root,"value",value=cJSON_CreateObject());
 
-		cJSON_AddStringToObject(value,"MACAddress","xxxxxxxx");
-
-		cJSON_AddStringToObject(value,"Channels","FFFF");
-
-		cJSON_AddNumberToObject(value,"numberofchildlimit",5);
-		
+		cJSON_AddStringToObject(value,"med","xxxxxxxx");		
 
 		out = cJSON_Print(root);
+		int outLen = strlen(out);
 		
-		printf("root = %s\n",out);
-		strncpy(buff,out,strlen(out));
-*/
+		printf("root(%d) = %s\n",outLen,out);
+		strncpy(buff,out,outLen);
+		buff[outLen] = '\0';
+
         n = sendto(sock, buff, strlen(buff), 0, (struct sockaddr *)&addr, sizeof(addr));
         if (n < 0)
         {
@@ -72,6 +70,7 @@ int main(int argc, char **argv)
             close(sock);
             break;
         }
+		
         n = recvfrom(sock, buff, 512, 0, (struct sockaddr *)&addr, &len);
         if (n>0)
         {
@@ -92,7 +91,10 @@ int main(int argc, char **argv)
             break;
         }
 
-//		break;
+		cJSON_Delete(root);
+		free(out);
+
+		sleep(5);
     }
     
     return 0;

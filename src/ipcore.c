@@ -1,42 +1,79 @@
 #include <stdlib.h>
 
 #include "cJSON.h"
+#include "udpserver.h"
 
-void call_ipchelper(int udpfd,struct sockaddr *cliaddr,char *msg)
-{
-	cJSON *pJson;	
+
+
+int parse_json_udpmsg(ipc_udp_client_st *ipCli) {
+	cJSON *pJson;
+	char appAddr[32];
+	char module[32];
 	
-	pJson = cJSON_Parse(msg);
+	pJson = cJSON_Parse(ipCli->recvMsg);
+
+	if(!pJson)
+		return -1;
+
 	
 	cJSON *pJsonCmdUrl = cJSON_GetObjectItem(pJson, "cmd_url");
-	char *pCmdUrl = cJSON_Print(pJsonCmdUrl);
+	if(!pJsonCmdUrl)
+		goto exit1;
+
+
+	sscanf(pJsonCmdUrl->valuestring,"/%[^/]/%[^/]",appAddr,module);
+	if (!appAddr && !strncmp(appAddr,"heartbeatclient",strlen(appAddr))) {		
+		hb_print(LOG_ERR,"app address error(%s)!",appAddr);
+		goto exit1;
+	}
+	ipCli->jsonModule = strdup(module);
+
+
 
 	cJSON *pJsonCmdName = cJSON_GetObjectItem(pJson, "cmd_name");
-	char *pCmdName = cJSON_Print(pJsonCmdName);
-	
-	cJSON *pJsonNodeMac = cJSON_GetObjectItem(pJson, "node_mac");
-	char *pNodeMac = cJSON_Print(pJsonNodeMac);
-		
-	cJSON *pJsonValue = cJSON_GetObjectItem(pJson, "value");
+	if(!pJsonCmdName)
+		goto exit1;
+	ipCli->jsonCmdName = strdup(pJsonCmdName->valuestring);
 
-	cJSON *pJsonMacAddress = cJSON_GetObjectItem(pJsonValue, "MACAddress");
-	char *pMacAddress = cJSON_Print(pJsonMacAddress);
-
-	cJSON *pJsonChannels = cJSON_GetObjectItem(pJsonValue, "Channels");
-	char *pChannels = cJSON_Print(pJsonChannels);
 	
-	cJSON *pJsonNumberChildLimit = cJSON_GetObjectItem(pJsonValue, "numberofchildlimit");
-	char *pNumberChildLimit = cJSON_Print(pJsonNumberChildLimit);
-	
-	printf("pCmdUrl(%s) pCmdName(%s) pNodeMac(%s) pMacAddress(%s) pChannels(%s) pNumberChildLimit(%d)\n",
-		pCmdUrl,pCmdName,pNodeMac,pMacAddress,pChannels,atoi(pNumberChildLimit));
+	cJSON *pJsonVendor = cJSON_GetObjectItem(pJson, "vendor");
+	if(!pJsonVendor)
+		goto exit1;
+	ipCli->jsonVendor = strdup(pJsonVendor->valuestring);
 
-	free(pCmdUrl);
-	free(pCmdName);
-	free(pNodeMac);
-	free(pMacAddress);	
-	free(pChannels);
-	free(pNumberChildLimit);		
+	hb_print(LOG_INFO,"pCmdUrl(%s) pCmdName(%s) pVendor(%s)",
+		pJsonCmdUrl->valuestring,ipCli->jsonCmdName,ipCli->jsonVendor);
+
+	ipCli->jsonMsg = pJson;
+	return 0;
+
+exit1:
 	cJSON_Delete(pJson);
+	return -1;
+}
+
+int dispatch_json_udpmsg(ipc_udp_client_st *ipCli)
+{
+	if(0 == strncmp(ipCli->jsonVendor,"myed",4)) {
+		call_mye_interface(ipCli);
+	}
+	return 0;
+}
+
+
+void call_ipchelper(ipc_udp_client_st *ipCli)
+{
+	if (parse_json_udpmsg(ipCli) < 0) {
+		hb_print(LOG_ERR,"parse json udp packet error!");
+		delete_ipcli(ipCli);
+		return -1;
+	}
+
+	if (dispatch_json_udpmsg(ipCli) < 0) {
+		hb_print(LOG_ERR,"dispatch json udp packet error!");
+		delete_ipcli(ipCli);
+		return -1;
+	}
+	return 0;
 }
 

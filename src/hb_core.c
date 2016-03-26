@@ -294,7 +294,7 @@ int hb_do_process(struct heartbeat_route_client* hbrc)
 
 #if 1		
 			u32_t vendor = 0x11223344;
-			business_report(hbrc,vendor);
+			business_report(vendor);
 #endif
 		}		
 		else if ( HBRC_CLEAN == hbrc->hbrc_sm ) {
