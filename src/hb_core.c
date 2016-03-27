@@ -10,6 +10,10 @@ int search_hbs(struct heartbeat_route_client *hbrc)
 	int conectFlag = 0;
 	struct hbc_conf conf = hbrc->hbrc_conf;
 
+	if(!hbrc->hbs_count) {
+		hb_print(LOG_INFO,"There is no heartbeat server!");
+	}
+	
 	for( i=0;i<hbrc->hbs_count;i++) {
 		struct hb_server* hbs;
 		int clientfd;
@@ -234,6 +238,7 @@ static int clean_hbrc(struct heartbeat_route_client* hbrc)
 {
 	/* init firest hbs */
 	hbrc->sendsn = 0;
+	hbrc->recvsn = 0;
 	hbrc->hbrc_sockfd = 0;
 	hbrc->session_client_key = 0;
 	hbrc->session_server_key = 0;
@@ -292,7 +297,7 @@ int hb_do_process(struct heartbeat_route_client* hbrc)
 		else if ( HBRC_ECHO == hbrc->hbrc_sm ) {
 			sleep(30);
 
-#if 1		
+#if DEBUG_IPC		
 			u32_t vendor = 0x11223344;
 			business_report(vendor);
 #endif

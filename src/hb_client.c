@@ -2,7 +2,7 @@
 
 struct glob_arg G;
 
-#define DEBUG_IPC 1
+#define DEBUG_IPC 0
 
 #if 0
 static u32_t session_client_key = 0;
@@ -123,29 +123,6 @@ static int amts_getmac(char *emac)
 	pclose(file);
 	return 0;	
 }
-
-static int parse_file(struct heartbeat_route_client* hbrc)
-{
-#if 0
-	char str_ipdomain[256] = {0};
-	char str_int[16] = {0};
-	int conn_interval = 0;
-	
-	if(GetProfileString(G.configFile, "server_conf", "ip-domain", str_ipdomain) < 0){
-		hb_print(LOG_ERR, " not found ip-domain!");
-		return -1;
-	}
-	
-	if(GetProfileString(G.configFile, "connect_conf", "connect-interval", str_int) < 0){
-		hb_print(LOG_ERR, " not found ip-domain!");
-		return -1;
-	}
-	conn_interval = atoi(str_int);
-	hb_print(LOG_INFO, "ipdomain(%s) conn_interval(%d)",str_ipdomain,conn_interval);
-#endif
-	return 0;
-}
-
 
 static struct hb_server* get_hbs()
 {
@@ -297,6 +274,54 @@ static int parse_startup_mtk(struct heartbeat_route_client *hbrc)
 }
 #endif
 
+static int parse_file(struct heartbeat_route_client* hbrc)
+{
+#if 0
+	char str_ipdomain[256] = {0};
+	char str_int[16] = {0};
+	int conn_interval = 0;
+	
+	if(GetProfileString(G.configFile, "server_conf", "ip-domain", str_ipdomain) < 0){
+		hb_print(LOG_ERR, " not found ip-domain!");
+		return -1;
+	}
+	
+	if(GetProfileString(G.configFile, "connect_conf", "connect-interval", str_int) < 0){
+		hb_print(LOG_ERR, " not found ip-domain!");
+		return -1;
+	}
+	conn_interval = atoi(str_int);
+	hb_print(LOG_INFO, "ipdomain(%s) conn_interval(%d)",str_ipdomain,conn_interval);
+#endif
+
+	char hbAddr[128] = {0};
+	char hbDefaultAddr[128] = {0};
+
+	if(GetProfileString(G.configFile, "server_conf", "addr", hbAddr) < 0){
+		hb_print(LOG_ERR, " not found addr!");
+		return -1;
+	}
+	
+	if(GetProfileString(G.configFile, "server_conf", "default_addr", hbDefaultAddr) < 0){
+		hb_print(LOG_ERR, " not found default_addr!");
+		return -1;
+	}
+
+	hbrc->hbrc_conf.echo_interval = 20;
+	hbrc->hbrc_conf.noecho_interval = 20;
+	hbrc->hbrc_conf.retry_count = 3;
+	hbrc->hbrc_conf.retry_interval = 120;
+
+	hb_print(LOG_INFO, "echo(%d) noecho(%d) retry_count(%d) retry_interval(%d)",
+			hbrc->hbrc_conf.echo_interval,hbrc->hbrc_conf.noecho_interval,hbrc->hbrc_conf.retry_count,hbrc->hbrc_conf.retry_interval);
+	hb_print(LOG_INFO, "Cfg.DefaultAddr(%d) %s	Cfg.ExtAddr(%d) %s",strlen(hbDefaultAddr),hbDefaultAddr,
+			strlen(hbAddr),hbAddr);
+
+	parse_hb_dnsip(hbrc,hbDefaultAddr);
+	parse_hb_dnsip(hbrc,hbAddr);
+	
+	return 0;
+}
 
 
 static int init_default_hbc_config(struct hbc_conf *conf)
@@ -322,6 +347,7 @@ static int init_hbrc(struct heartbeat_route_client** hbrcp)
 	/* connect conf*/
 	hbrc->equipmentSn[0] = '\0';
 	hbrc->sendsn = 0;
+	hbrc->recvsn = 0;
 	hbrc->hbrc_sockfd = 0;
 	hbrc->session_client_key = 0;
 	hbrc->session_server_key = 0;
@@ -360,12 +386,23 @@ static int init_hbrc(struct heartbeat_route_client** hbrcp)
 	}
 #endif
 
+#if x86
+	char emac_src[16] = "001122334455";
+	strncpy(emac,emac_src,strlen(emac_src));
+#endif
+
+
 	hb_print(LOG_INFO,"############ emac = %s",emac);
 	sscanf(emac,"%02x%02x%02x%02x%02x%02x",
 		&hbrc->equipmentSn[0],&hbrc->equipmentSn[1],&hbrc->equipmentSn[2],
 		&hbrc->equipmentSn[3],&hbrc->equipmentSn[4],&hbrc->equipmentSn[5]); 
 
 	return 0;
+}
+
+void thread_udp_server(void *arg)
+{
+	udp_server(10400);
 }
 
 
@@ -405,14 +442,17 @@ int main(int argc, char **argv)
 	parse_file(hbrc);
 #endif
 #endif
+	if(1) {
+		pthread_t pid_udp_server=0;
+		debug(LOG_ERR, "%s : Creation of thread_udp_server check zigbee station !",__FUNCTION__);
+		ret = pthread_create(&pid_udp_server, NULL, (void *)thread_udp_server, NULL);
+		if (ret != 0) {
+			return -1;
+		}
+		pthread_detach(pid_udp_server);
+	}
 
-
-#if DEBUG_IPC
-	udp_server(10400);
-#else
 	hb_do_process(hbrc);
-#endif
-
 exit:
 	return 0;
 }

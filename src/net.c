@@ -391,6 +391,8 @@ int proc_notifyreq(struct heartbeat_route_client* hbrc, char *pBuff)
 	TECHORESP Recho_reqmsg;
 
 	pHdr = (THDR *)pBuff;
+
+	hbrc->recvsn = pHdr->sn;
 	TNOTIFYREQ Notify_reqmsg;
 	//XORencode(pBuff + sizeof(THDR), &Notify_reqmsg, hbrc->session_client_key, pHdr->pktlen);
 	hbrc->msg_decode(pBuff + sizeof(THDR), &Notify_reqmsg, hbrc->session_client_key, pHdr->pktlen);
@@ -431,6 +433,10 @@ int proc_packet(struct heartbeat_route_client* hbrc, char *pBuff, int readLen)
     {
         proc_reportresp(hbrc, pBuff);
     }
+	else if(pHdr->pktType == PKT_ISSUE_REQUEST)
+	{
+		proc_issuereq(hbrc, pBuff);
+	}
     else
     {
 	    hb_print(LOG_ERR, "[Fail] invalid pocket!");
@@ -530,7 +536,6 @@ int net_notify(struct heartbeat_route_client *hbrc)
 {
 	THDR notifyRespHdr;
 	THDR *pHdr = &notifyRespHdr;
-	int clientSn = 0;
 	char msg[256] = {0};
 
 	memset(pHdr,0,sizeof(*pHdr));
@@ -542,8 +547,7 @@ int net_notify(struct heartbeat_route_client *hbrc)
 
 	TNOTIFYRESP  sendNotifyRespMsg;
 	memset(&sendNotifyRespMsg, 0, sizeof(sendNotifyRespMsg));
-	clientSn = pHdr->sn;
-	sendNotifyRespMsg.returnSn = clientSn;
+	sendNotifyRespMsg.returnSn = hbrc->recvsn;
 	sendNotifyRespMsg.returnCode = NOF_OK;
 
 	int msgLen = sizeof(TNOTIFYRESP);

@@ -95,6 +95,7 @@ int main(int argc, char **argv)
 		free(out);
 
 		sleep(5);
+		break;
     }
     
     return 0;

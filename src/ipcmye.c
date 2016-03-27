@@ -7,6 +7,7 @@ void call_mye_interface(ipc_udp_client_st *ipCli)
 	
 	pVendor = (u32_t*)ipCli->jsonVendor; 
 	vendor = *pVendor;
+
 	cJSON *pJsonValue = cJSON_GetObjectItem(ipCli->jsonMsg, "value");
 
 	cJSON *pJsonMed = cJSON_GetObjectItem(pJsonValue, "med");

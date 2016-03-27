@@ -89,13 +89,18 @@ void thread_recv_udpmsg(void *data)
 
 void delete_ipcli(ipc_udp_client_st *ipCli)
 {
+	return;
 	if(!ipCli)
 		return;
 	
-	if(ipCli->recvMsg)
+	if(ipCli->recvMsg) {
 		free(ipCli->recvMsg);
-	if(ipCli->sendMsg)
+		ipCli->recvMsg = NULL;
+	}
+	if(ipCli->sendMsg) {
 		free(ipCli->sendMsg);
+		ipCli->sendMsg = NULL;
+	}
 	if(ipCli->jsonMsg)
 		cJSON_Delete(ipCli->jsonMsg);
 	if(ipCli->jsonModule)

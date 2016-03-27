@@ -33,7 +33,8 @@ struct heartbeat_route_client {
 	/* connect param*/
 	char equipmentSn[6];
 	int hbrc_sockfd;
-	int sendsn;
+	int sendsn;	 //发送序列号
+	int recvsn;  //接收序列号
 	u32_t session_server_key;
 	u32_t session_client_key;
 
