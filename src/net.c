@@ -205,7 +205,10 @@ int net_send_challage_msg(struct heartbeat_route_client *hbrc,THDR* pHdr,char* p
     send(fd, deschal, msgLen, 0);
 }
 
-
+/*
+接收网络数据，处理粘包和分包。
+hbrc : 心跳路由客户端
+*/
 int net_recv_msg(struct heartbeat_route_client* hbrc)
 {
     char buff[512] = {0};
@@ -351,11 +354,15 @@ int net_recv_msg(struct heartbeat_route_client* hbrc)
 }
 
 
+/*
+hbrc : 心跳客户端
+pHdr : 心跳协议头
+pMsg : 心跳数据报文
+msgLen : 心跳数据报文长度
+*/
 int net_send_msg(struct heartbeat_route_client *hbrc,THDR* pHdr,char* pMsg,int msgLen)
 {
 	int fd = hbrc->hbrc_sockfd;
-
-	hb_print(LOG_ERR,"pMsg (%s)",pMsg);
 
     if(fd <= 0)
     {
@@ -364,7 +371,6 @@ int net_send_msg(struct heartbeat_route_client *hbrc,THDR* pHdr,char* pMsg,int m
     }
 
 	char encodeMsg[1024]={0};
-	pHdr->pktlen = msgLen;
 
 	//XORencode(pMsg, encodeMsg, hbrc->session_server_key, pHdr->pktlen);
 	hbrc->msg_encode(pMsg, encodeMsg, hbrc->session_server_key, pHdr->pktlen);

@@ -1,5 +1,5 @@
 #include "hb_core.h"
-
+#include "cJSON.h"
 
 extern struct glob_arg G;
 
@@ -56,7 +56,82 @@ static void print_issueresp(THDR  *tHdr, TISSUERESP *issueResp)
 		issueResp->response_code);
 }
 
+int test_issue()
+{
+    printf("This is a UDP client\n");
+    struct sockaddr_in addr;
+    int sock;
 
+    if ( (sock=socket(AF_INET, SOCK_DGRAM, 0)) <0)
+    {
+        perror("socket");
+        exit(1);
+    }
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(10300);
+    addr.sin_addr.s_addr = inet_addr("192.168.13.164");
+    if (addr.sin_addr.s_addr == INADDR_NONE)
+    {
+        printf("Incorrect ip address!");
+        close(sock);
+        exit(1);
+    }
+
+    char buff[512];
+    int len = sizeof(addr);
+    while (1)
+    {
+//        gets(buff);
+        int n;
+
+		cJSON *root,*value, *med;
+		
+		char *out;
+
+		root=cJSON_CreateObject();
+
+
+		cJSON_AddStringToObject(root,"cmd_url","/heartbeatclient/business");
+
+		cJSON_AddStringToObject(root,"cmd_name","report");
+
+		cJSON_AddStringToObject(root,"vendor","myed");
+		
+		cJSON_AddItemToObject(root,"value",value=cJSON_CreateArray());
+
+		cJSON_AddItemToObject(value,"value",med=cJSON_CreateObject());
+
+		cJSON_AddStringToObject(med,"med","cccccccccccccccccccccccccccccccccccccccccxxxxxxx");		
+
+		out = cJSON_Print(root);
+		int outLen = strlen(out);
+		
+		printf("root(%d) = %s\n",outLen,out);
+		strncpy(buff,out,outLen);
+		buff[outLen] = '\0';
+
+        n = sendto(sock, buff, strlen(buff), 0, (struct sockaddr *)&addr, sizeof(addr));
+        if (n < 0)
+        {
+            perror("sendto");
+            close(sock);
+            break;
+        }
+		
+		cJSON_Delete(root);
+		free(out);
+		break;
+    }
+    
+    return 0;
+}
+
+
+/*
+vendor:  厂商字段
+vendorMsg:  厂商自定义消息
+vendorMsgLen: 厂商自定义消息长度
+*/
 int business_report(u32_t vendor,char* vendorMsg,int vendorMsgLen)
 {
 	struct heartbeat_route_client *hbrc = G.hbrc;
@@ -65,7 +140,7 @@ int business_report(u32_t vendor,char* vendorMsg,int vendorMsgLen)
     THDR echo_hdr;
     THDR *pHdr = &echo_hdr;
 	int i = 0;
-	char msg[256] = {0};
+	char msg[512] = {0};
 
 	memset(pHdr,0,sizeof(*pHdr));
     pHdr->flag = PKT_HDR_MAGIC;
@@ -79,11 +154,12 @@ int business_report(u32_t vendor,char* vendorMsg,int vendorMsgLen)
 
 	memcpy((char *)&pReq->vendor,(char *)&vendor,4);
 	//pReq->vendor = vendor;
-	print_reportreq(pHdr,pReq);
 
 	memcpy(msg,pReq,msgLen);	
 	memcpy(msg+msgLen,vendorMsg,vendorMsgLen);
 	msgLen += vendorMsgLen;
+	pHdr->pktlen = msgLen;
+	print_reportreq(pHdr,pReq);
 
 	msg[msgLen] = '\0';
 	net_send_msg(hbrc,pHdr,msg,msgLen);
@@ -114,6 +190,8 @@ int proc_issuereq(struct heartbeat_route_client* hbrc, char *pBuff)
 	hbrc->msg_decode(pBuff + sizeof(THDR), &issueReqMsg, hbrc->session_client_key, pHdr->pktlen);
 	print_issuereq(pHdr,&issueReqMsg);
 
+	test_issue();
+
 	vendorMsg = &issueReqMsg + 4;
 	vendorMsgLen = pHdr->pktlen - (sizeof(THDR)+4);
 	business_issue_resp();
@@ -125,7 +203,7 @@ int business_issue_resp()
 	struct heartbeat_route_client *hbrc = G.hbrc;
 	THDR issueRespHdr;
 	THDR *pHdr = &issueRespHdr;
-	char msg[256] = {0};
+	char msg[512] = {0};
 
 	memset(pHdr,0,sizeof(*pHdr));
 	pHdr->flag = PKT_HDR_MAGIC;

@@ -89,20 +89,22 @@ void thread_recv_udpmsg(void *data)
 
 void delete_ipcli(ipc_udp_client_st *ipCli)
 {
-	return;
 	if(!ipCli)
 		return;
-	
+
 	if(ipCli->recvMsg) {
 		free(ipCli->recvMsg);
 		ipCli->recvMsg = NULL;
 	}
+
 	if(ipCli->sendMsg) {
 		free(ipCli->sendMsg);
 		ipCli->sendMsg = NULL;
 	}
+
 	if(ipCli->jsonMsg)
 		cJSON_Delete(ipCli->jsonMsg);
+
 	if(ipCli->jsonModule)
 		free(ipCli->jsonModule);
 	if(ipCli->jsonCmdName)
@@ -131,33 +133,21 @@ int process_recvmsg(int udpfd)
 
 	printf("ipCli->recvMsg(%d)(%s)\n",ipCli->recvMsgLen,ipCli->recvMsg);
 
+	/*  当前udp只处理ipc消息，调用錭all_ipchelper触发ipc消息解析  */
 	if (call_ipchelper(ipCli) < 0) {
 		hb_print(LOG_ERR,"parse json udp packet error!");
 		delete_ipcli(ipCli);
 		return -1;
 	}
 
-	ipCli->sendMsg = ipCli->recvMsg;
+
+#if 0
+	ipCli->sendMsg = strdup(ipCli->recvMsg);
 	ipCli->sendMsgLen = ipCli->recvMsgLen;
 	printf("ipCli->sendMsg(%d)(%s)\n",ipCli->sendMsgLen,ipCli->sendMsg);
-
 	net_sendto(ipCli->listenfd, ipCli->sendMsg, ipCli->sendMsgLen, 0, (struct sockaddr*) &ipCli->cliAddr, len);
-	delete_ipcli(ipCli);
-#if 0
-	hb_print(LOG_INFO,"recv msg coming client (%s:%d)",inet_ntoa(ipCli->cliAddr.sin_addr),ipCli->cliAddr.sin_port);
-	call_ipchelper(ipCli);
-
-
-	ipCli->sendMsg = ipCli->recvMsg;
-	ipCli->sendMsgLen = ipCli->recvMsgLen; 
-	net_sendto(ipCli->listenfd, ipCli->sendMsg, ipCli->sendMsgLen, 0, (struct sockaddr*) &ipCli->cliAddr, len);
-
-	if(!ipCli->recvMsg)
-		free(ipCli->recvMsg);
-	if(!ipCli->sendMsg)
-		free(ipCli->sendMsg);
-	free(ipCli);
 #endif
+	delete_ipcli(ipCli);
 	return 0;
 }
 

@@ -54,7 +54,7 @@ int main(int argc, char **argv)
 		
 		cJSON_AddItemToObject(root,"value",value=cJSON_CreateObject());
 
-		cJSON_AddStringToObject(value,"med","xxxxxxxx");		
+		cJSON_AddStringToObject(value,"med","xxxxxxxxccccccccccccccccccccccccccccccccccccccccc");		
 
 		out = cJSON_Print(root);
 		int outLen = strlen(out);
