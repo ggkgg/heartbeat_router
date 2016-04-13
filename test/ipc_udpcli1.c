@@ -54,7 +54,7 @@ int main(int argc, char **argv)
 		
 		cJSON_AddItemToObject(root,"value",value=cJSON_CreateObject());
 
-		cJSON_AddStringToObject(value,"med","xxxxxxxxccccccccccccccccccccccccccccccccccccccccc");		
+		cJSON_AddStringToObject(value,"med","111111112222222233333333444444445555555566666666");		
 
 		out = cJSON_Print(root);
 		int outLen = strlen(out);
@@ -70,7 +70,7 @@ int main(int argc, char **argv)
             close(sock);
             break;
         }
-		
+#if 0
         n = recvfrom(sock, buff, 512, 0, (struct sockaddr *)&addr, &len);
         if (n>0)
         {
@@ -90,7 +90,7 @@ int main(int argc, char **argv)
             close(sock);
             break;
         }
-
+#endif
 		cJSON_Delete(root);
 		free(out);
 

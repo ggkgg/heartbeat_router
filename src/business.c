@@ -153,8 +153,7 @@ int business_report(u32_t vendor,char* vendorMsg,int vendorMsgLen)
     int msgLen = sizeof(TREPORTREQ);
 
 	memcpy((char *)&pReq->vendor,(char *)&vendor,4);
-	//pReq->vendor = vendor;
-
+	
 	memcpy(msg,pReq,msgLen);	
 	memcpy(msg+msgLen,vendorMsg,vendorMsgLen);
 	msgLen += vendorMsgLen;

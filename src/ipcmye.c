@@ -10,20 +10,18 @@ void call_mye_interface(ipc_udp_client_st *ipCli)
 
 	cJSON *pJsonValue = cJSON_GetObjectItem(ipCli->jsonMsg, "value");
 
-#if 1
+#if 0
 	int iSize = cJSON_GetArraySize(pJsonValue);
 	int iCnt = 0;
-
 	
-	hb_print(LOG_ERR,"$$$$$$$$$ iSize (%d)",iSize);
+	hb_print(LOG_INFO,"%s:receive %d med commands !",__FUNCTION__,iSize);
 
 	/* ÂÖ·¢ËÍ Êý¾Ý */
 	for(iCnt = 0; iCnt < iSize; iCnt++)
 	{
 		cJSON *pJsonMedArray = cJSON_GetArrayItem(pJsonValue, iCnt);
 		cJSON *pJsonMed = cJSON_GetObjectItem(pJsonMedArray, "med");
-		char *pMed = pJsonMed->valuestring;
-		hb_print(LOG_ERR,"$$$$$$$$$ strlen(pMed) (%d)",strlen(pMed));
+		char *pMed = pJsonMed->valuestring;;
 		business_report(vendor,pMed,strlen(pMed));
 	}
 #elif 0
