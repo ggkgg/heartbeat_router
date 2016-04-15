@@ -32,14 +32,17 @@ static void print_reportresp(THDR  *tHdr, TREPORTRESP *reportResp)
 static void print_issuereq(THDR  *tHdr, TISSUEREQ  *issueReq)
 {
 	printf("<<-- [issue resquest] [hdr]:{flag(0x%04x),pktlen(%d),version(%d),pktType(%d),sn(%d),ext(0x%08x)} \
-[data]:{vendor(0x%08x)}\n", 
-		tHdr->flag,
-		tHdr->pktlen,
-		tHdr->version,
-		tHdr->pktType,
-		tHdr->sn,
-		tHdr->ext,
-		issueReq->vendor);
+[data]:{vendor(0x%08x),equipmentSn(0x%02x%02x%02x%02x%02x%02x)}\n", 
+			tHdr->flag,
+			tHdr->pktlen,
+			tHdr->version,
+			tHdr->pktType,
+			tHdr->sn,
+			tHdr->ext,
+			issueReq->vendor,
+			issueReq->equipmentSn[0],issueReq->equipmentSn[1],issueReq->equipmentSn[2],
+			issueReq->equipmentSn[3],issueReq->equipmentSn[4],issueReq->equipmentSn[5]
+		);
 }
 
 static void print_issueresp(THDR  *tHdr, TISSUERESP *issueResp)
@@ -98,14 +101,14 @@ int send_issuedata_to_mye(char* issueReqMsg)
 	
 	cJSON_AddItemToObject(root,"value",value=cJSON_CreateArray());
 
-	cJSON_AddItemToObject(value,"value",med=cJSON_CreateObject());
-
-	cJSON_AddStringToObject(med,"med",medMsg);		
+	cJSON_AddItemToArray(value,med=cJSON_CreateObject());
+	
+	cJSON_AddStringToObject(med,"med",medMsg);
 
 	out = cJSON_Print(root);
 	int outLen = strlen(out);
 	
-	printf("root(%d) = %s\n",outLen,out);
+	printf("[send_issuedata_to_mye] root(%d) = %s\n",outLen,out);
 	strncpy(buff,out,outLen);
 	buff[outLen] = '\0';
 
@@ -264,6 +267,7 @@ int proc_issuereq(struct heartbeat_route_client* hbrc, char *pBuff)
 
 	pHdr = (THDR *)pBuff;
 	hbrc->recvsn = pHdr->sn;
+	//hbrc->recvsn = pHdr->sn;
 	hbrc->msg_decode(pBuff + sizeof(THDR), issueReqMsg, hbrc->session_client_key, pHdr->pktlen);
 
 	TISSUEREQ *pIssueReq;
@@ -296,8 +300,8 @@ int business_issue_resp()
 	memset(&sendIssueRespMsg, 0, sizeof(sendIssueRespMsg));
 	sendIssueRespMsg.client_sn = hbrc->recvsn;
 	sendIssueRespMsg.response_code = NOF_OK;
-
-	int msgLen = sizeof(TISSUERESP);
+	pHdr->pktlen = sizeof(TISSUERESP);
+	int msgLen = pHdr->pktlen;
 	print_issueresp(pHdr,&sendIssueRespMsg);
 
 #if 0

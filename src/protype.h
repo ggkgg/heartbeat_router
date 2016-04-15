@@ -89,7 +89,7 @@ struct report_response
 struct issue_request
 {
 	u32_t vendor;
-	i8_t equipmentSn[6];
+	u8_t equipmentSn[6];
 };
 
 struct issue_response

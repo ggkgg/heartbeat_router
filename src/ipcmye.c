@@ -10,7 +10,7 @@ void call_mye_interface(ipc_udp_client_st *ipCli)
 
 	cJSON *pJsonValue = cJSON_GetObjectItem(ipCli->jsonMsg, "value");
 
-#if 0
+#if 1
 	int iSize = cJSON_GetArraySize(pJsonValue);
 	int iCnt = 0;
 	

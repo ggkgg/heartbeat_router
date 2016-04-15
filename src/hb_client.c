@@ -387,7 +387,7 @@ static int init_hbrc(struct heartbeat_route_client** hbrcp)
 #endif
 
 #if x86
-	char emac_src[16] = "001122334455";
+	char emac_src[16] = "112233445566";
 	strncpy(emac,emac_src,strlen(emac_src));
 #endif
 

@@ -39,7 +39,7 @@ int main(int argc, char **argv)
 //        gets(buff);
         int n;
 
-		cJSON *root,*value;
+		cJSON *root,*value, *med;
 		
 		char *out;
 
@@ -52,9 +52,11 @@ int main(int argc, char **argv)
 
 		cJSON_AddStringToObject(root,"vendor","myed");
 		
-		cJSON_AddItemToObject(root,"value",value=cJSON_CreateObject());
+		cJSON_AddItemToObject(root,"value",value=cJSON_CreateArray());
+		
+		cJSON_AddItemToArray(value,med=cJSON_CreateObject());
 
-		cJSON_AddStringToObject(value,"med","111111112222222233333333444444445555555566666666");		
+		cJSON_AddStringToObject(med,"med","12345678123456781234567812345678");
 
 		out = cJSON_Print(root);
 		int outLen = strlen(out);
