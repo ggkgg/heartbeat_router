@@ -89,6 +89,7 @@ struct report_response
 struct issue_request
 {
 	u32_t vendor;
+	i8_t equipmentSn[6];
 };
 
 struct issue_response
@@ -96,7 +97,6 @@ struct issue_response
     u16_t client_sn;
     u16_t response_code;
 };
-
 
 enum resp_code
 {

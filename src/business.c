@@ -56,6 +56,82 @@ static void print_issueresp(THDR  *tHdr, TISSUERESP *issueResp)
 		issueResp->response_code);
 }
 
+int send_issuedata_to_mye(char* issueReqMsg)
+{
+    struct sockaddr_in addr;
+    int sock;
+	char *medMsg;
+
+	medMsg = issueReqMsg + 10;
+    if ( (sock=socket(AF_INET, SOCK_DGRAM, 0)) <0)
+    {
+        perror("socket");
+        exit(1);
+    }
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(10300);
+    addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    if (addr.sin_addr.s_addr == INADDR_NONE)
+    {
+        printf("Incorrect ip address!");
+        close(sock);
+        exit(1);
+    }
+
+    char buff[1024];
+    int len = sizeof(addr);
+   
+    int n;
+
+	cJSON *root,*value, *med;
+	
+	char *out;
+
+	root=cJSON_CreateObject();
+
+
+	cJSON_AddStringToObject(root,"cmd_url","/heartbeatclient/business");
+
+	cJSON_AddStringToObject(root,"cmd_name","report");
+
+	cJSON_AddStringToObject(root,"vendor","myed");
+	
+	cJSON_AddItemToObject(root,"value",value=cJSON_CreateArray());
+
+	cJSON_AddItemToObject(value,"value",med=cJSON_CreateObject());
+
+	cJSON_AddStringToObject(med,"med",medMsg);		
+
+	out = cJSON_Print(root);
+	int outLen = strlen(out);
+	
+	printf("root(%d) = %s\n",outLen,out);
+	strncpy(buff,out,outLen);
+	buff[outLen] = '\0';
+
+    n = sendto(sock, buff, strlen(buff), 0, (struct sockaddr *)&addr, sizeof(addr));
+    if (n < 0)
+    {
+        perror("sendto");
+        close(sock);
+    }
+	
+	cJSON_Delete(root);
+	free(out);
+    return 0;	
+}
+
+int dispatch_issuedata(char* issueReqMsg)
+{
+	char *vendor;
+
+	vendor = issueReqMsg;
+	if(0 == strncmp(vendor,"myed",4)) {
+		send_issuedata_to_mye(issueReqMsg);
+	}	
+	return 0;
+}
+
 int test_issue()
 {
     printf("This is a UDP client\n");
@@ -180,19 +256,24 @@ int proc_reportresp(struct heartbeat_route_client* hbrc, char *pBuff)
 int proc_issuereq(struct heartbeat_route_client* hbrc, char *pBuff)
 {
 	THDR* pHdr;
-	TISSUEREQ issueReqMsg;
-	char *vendorMsg;
-	int vendorMsgLen;
+	//char *vendorMsg;
+	//int vendorMsgLen;
+	char issueReqMsg[1024];
+
+	
 
 	pHdr = (THDR *)pBuff;
 	hbrc->recvsn = pHdr->sn;
-	hbrc->msg_decode(pBuff + sizeof(THDR), &issueReqMsg, hbrc->session_client_key, pHdr->pktlen);
-	print_issuereq(pHdr,&issueReqMsg);
+	hbrc->msg_decode(pBuff + sizeof(THDR), issueReqMsg, hbrc->session_client_key, pHdr->pktlen);
 
-	test_issue();
+	TISSUEREQ *pIssueReq;
+	pIssueReq = (TISSUEREQ *)issueReqMsg;
+	print_issuereq(pHdr,pIssueReq);
 
-	vendorMsg = &issueReqMsg + 4;
-	vendorMsgLen = pHdr->pktlen - (sizeof(THDR)+4);
+	dispatch_issuedata(issueReqMsg);
+
+	//vendorMsg = &issueReqMsg + 4;
+	//vendorMsgLen = pHdr->pktlen - (sizeof(THDR)+4);
 	business_issue_resp();
 }
 
