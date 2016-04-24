@@ -53,10 +53,19 @@ int main(int argc, char **argv)
 		cJSON_AddStringToObject(root,"vendor","myed");
 		
 		cJSON_AddItemToObject(root,"value",value=cJSON_CreateArray());
-		
-		cJSON_AddItemToArray(value,med=cJSON_CreateObject());
 
-		cJSON_AddStringToObject(med,"med","12345678123456781234567812345678");
+#if 1
+#else
+		cJSON_AddItemToArray(value,cJSON_CreateString("1111111111"));
+		cJSON_AddItemToArray(value,cJSON_CreateString("2222222222"));
+
+#endif
+		//cJSON_AddItemToArray(value,med=cJSON_CreateObject());
+
+		cJSON_AddItemToArray(value,cJSON_CreateString("1111111111"));
+		cJSON_AddItemToArray(value,cJSON_CreateString("2222222222"));
+
+		//cJSON_AddStringToObject(med,"med","12345678123456781234567812345678");
 
 		out = cJSON_Print(root);
 		int outLen = strlen(out);

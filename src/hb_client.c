@@ -21,6 +21,9 @@ static int init_resource()
 	G.recvThread.recv_thpid = 0;
 	G.recvThread.pause_flag = 1;
 
+
+	G.udpThread.udpserver_thpid = 0;
+	G.udpThread.pause_flag = 1;
 	
 	debug_global.debuglevel = DEFAULT_DEBUGLEVEL;
 	debug_global.log_syslog = DEFAULT_LOG_SYSLOG;
@@ -400,12 +403,6 @@ static int init_hbrc(struct heartbeat_route_client** hbrcp)
 	return 0;
 }
 
-void thread_udp_server(void *arg)
-{
-	udp_server(10400);
-}
-
-
 int main(int argc, char **argv)
 {
 	int c,ret;
@@ -442,16 +439,6 @@ int main(int argc, char **argv)
 	parse_file(hbrc);
 #endif
 #endif
-	if(1) {
-		pthread_t pid_udp_server=0;
-		debug(LOG_ERR, "%s : Creation of thread_udp_server check zigbee station !",__FUNCTION__);
-		ret = pthread_create(&pid_udp_server, NULL, (void *)thread_udp_server, NULL);
-		if (ret != 0) {
-			return -1;
-		}
-		pthread_detach(pid_udp_server);
-	}
-
 	hb_do_process(hbrc);
 exit:
 	return 0;

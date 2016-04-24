@@ -14,7 +14,7 @@
 #endif
 
  
-
+extern struct glob_arg G;
 
 #define	MAXLINE	1024		/* to see datagram truncation */
 
@@ -120,6 +120,10 @@ int process_recvmsg(int udpfd)
 	char mesg[MAXLINE];
 	socklen_t	len;
 	ipc_udp_client_st *ipCli;
+
+	if(G.udpThread.pause_flag) {
+		return 0;
+	}
 
 
 	ipCli = (ipc_udp_client_st *)malloc(sizeof(ipc_udp_client_st));

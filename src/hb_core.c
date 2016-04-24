@@ -234,6 +234,11 @@ void thread_recv(void *arg)
 
 }
 
+void thread_udp_server(void *arg)
+{
+	udp_server(10400);
+}
+
 static int clean_hbrc(struct heartbeat_route_client* hbrc)
 {
 	/* init firest hbs */
@@ -291,6 +296,18 @@ int hb_do_process(struct heartbeat_route_client* hbrc)
 				}
 			}
 			G.recvThread.pause_flag = 0;
+
+			if(G.udpThread.udpserver_thpid == 0 ){
+				debug(LOG_ERR, "%s : Creation of thread_udp_server check zigbee station !",__FUNCTION__);
+				ret = pthread_create(&G.udpThread.udpserver_thpid, NULL, (void *)thread_udp_server, NULL);
+				if (ret != 0) {
+					debug(LOG_ERR, "FATAL: Failed to create a new thread (thread_recv)!");
+				
+				}
+				pthread_detach(G.udpThread.udpserver_thpid);
+			}
+			G.udpThread.pause_flag = 0;
+
 			debug(LOG_ERR, "[CHANLLENGE -> ECHO] ");
 			hbrc->hbrc_sm = HBRC_ECHO;
 		}

@@ -80,6 +80,12 @@ struct dispatch_thread {
 	int terminal_flag;
 };
 
+struct udp_thread {
+	pthread_t udpserver_thpid;
+	int pause_flag;
+};
+
+
 struct glob_arg {
 	/*command*/
 	char* configFile;
@@ -95,6 +101,7 @@ struct glob_arg {
 	struct echo_thread echoThread;
 	struct recv_thread recvThread;
 	struct dispatch_thread dispatchThread;
+	struct udp_thread udpThread;
 };
 
 #define MAX_HB_COUNT 10
