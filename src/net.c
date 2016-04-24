@@ -425,6 +425,9 @@ int proc_echoresp(struct heartbeat_route_client* hbrc, char *pBuff)
 	pHdr = (THDR *)pBuff;
 	//XORencode(pBuff + sizeof(THDR), &Recho_reqmsg, hbrc->session_client_key, pHdr->pktlen);
 	hbrc->msg_decode(pBuff + sizeof(THDR), &Recho_reqmsg, hbrc->session_client_key, pHdr->pktlen);
+	/* 记录收到心跳回应包对应的sn号 */
+	debug(LOG_INFO, "echo responce last_sn(%d)",Recho_reqmsg.client_sn);
+	hbrc->last_resp_echosn = Recho_reqmsg.client_sn;
 	print_echoresp(pHdr,&Recho_reqmsg);
 }
 
@@ -553,6 +556,10 @@ int net_echo(struct heartbeat_route_client *hbrc)
     pHdr->version = PKT_VERSION;
     pHdr->pktType = PKT_ECHO_REQUEST;
     pHdr->sn = hbrc->sendsn++;
+
+	/* 记录收到心跳回应包对应的sn号 */
+	debug(LOG_INFO, "echo request last_sn(%d)",pHdr->sn);
+	hbrc->last_req_echosn = pHdr->sn;
 
     TECHOREQ echo_reqmsg;
     TECHOREQ *pReq = &echo_reqmsg;

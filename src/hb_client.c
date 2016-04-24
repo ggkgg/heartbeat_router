@@ -355,6 +355,10 @@ static int init_hbrc(struct heartbeat_route_client** hbrcp)
 	hbrc->session_client_key = 0;
 	hbrc->session_server_key = 0;
 
+	hbrc->last_req_echosn = 0;
+	hbrc->last_resp_echosn = 0;
+	hbrc->lost_echo_count = 0;
+
 	/* recv buff*/
 	hbrc->gbuf = NULL;
 	hbrc->dataLen = 0;

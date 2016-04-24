@@ -37,6 +37,9 @@ struct heartbeat_route_client {
 	int recvsn;  //接收序列号
 	u32_t session_server_key;
 	u32_t session_client_key;
+	int last_req_echosn; //最近一个收到的心跳回应包
+	int last_resp_echosn; //最近一个收到的心跳回应包
+	int lost_echo_count;
 
 	/*recv buff*/
     char* gbuf;

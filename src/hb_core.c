@@ -142,6 +142,19 @@ void thread_echo(void *arg)
 	
 	while (1) {
 		if(!G.echoThread.pause_flag) {
+			debug(LOG_INFO, "echo send sn(%d) last_sn(%d)",hbrc->last_req_echosn,hbrc->last_resp_echosn);
+			if ( hbrc->last_req_echosn > hbrc->last_resp_echosn ) {
+				hbrc->lost_echo_count++;				
+			} else if ( hbrc->last_req_echosn == hbrc->last_resp_echosn ) {
+				hbrc->lost_echo_count = 0;
+			} else{
+				debug(LOG_ERR, "last_req_echosn <  last_resp_echosn ??????? ");
+			}
+			if ( hbrc->lost_echo_count > 3 ) {
+				debug(LOG_ERR, "[ECHO -> CLEAN] echo responce timeout !");
+				G.echoThread.pause_flag = 1;
+				hbrc->hbrc_sm = HBRC_CLEAN;				
+			}
 			net_echo(hbrc);
 		}
 		/* Sleep for config.crondinterval seconds... */
@@ -215,10 +228,10 @@ void thread_recv(void *arg)
 			continue;
 		}
 
-		// check whether a new connection comes
 		if (FD_ISSET(sock_fd, &read_fds)) {
+			/* 当返回值小于0的时候，只能表示服务器被关闭，如果是网关上行不通，则不能检测出来 */
 			if (net_recv_msg(hbrc) < 0) {
-				debug(LOG_ERR, "[ECHO -> CLEAN] session have closed !");
+				debug(LOG_ERR, "[ECHO -> CLEAN] heartbeat server session have closed !");
 				G.recvThread.pause_flag = 1;
 				hbrc->hbrc_sm = HBRC_CLEAN;
 			}	
@@ -247,6 +260,10 @@ static int clean_hbrc(struct heartbeat_route_client* hbrc)
 	hbrc->hbrc_sockfd = 0;
 	hbrc->session_client_key = 0;
 	hbrc->session_server_key = 0;
+
+	hbrc->last_req_echosn = 0;
+	hbrc->last_resp_echosn = 0;
+	hbrc->lost_echo_count = 0;
 
 	if(hbrc->gbuf) {
 		free(hbrc->gbuf);
@@ -322,6 +339,7 @@ int hb_do_process(struct heartbeat_route_client* hbrc)
 		else if ( HBRC_CLEAN == hbrc->hbrc_sm ) {
 			G.echoThread.pause_flag = 1;
 			G.recvThread.pause_flag = 1;
+			G.udpThread.pause_flag = 1;
 			clean_hbrc(hbrc);
 			debug(LOG_ERR, "[CLEAN -> INIT] Pause echo thread and recv thread,reinit!");
 			hbrc->hbrc_sm = HBRC_INIT;
