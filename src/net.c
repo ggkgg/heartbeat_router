@@ -206,13 +206,42 @@ int net_recv_challage_msg(struct heartbeat_route_client* hbrc,THDR *pHdr,TCHALRE
 			return -1;
 		}			
 		if (FD_ISSET(hbrc->hbrc_sockfd, &read_fds)) {
-			recbytes = read(hbrc->hbrc_sockfd, revdata, 128);
-			memcpy(&revBuffer[recTolBytes],revdata,recbytes);
-			recTolBytes += recbytes;
+			recbytes = read(hbrc->hbrc_sockfd, revdata, 128);			
+			if(recbytes < 0)
+			{
+				hb_print(LOG_ERR, "recbytes = %d after read , errno = %d(%s)!",recbytes,errno,strerror(errno));
+				
+				/* 非阻塞模式下，没有数据返回EAGAIN，跳出循环 
+				hb_print(LOG_ERR, "[Fail] read < 0 bytes ,errno(%d) %s!",errno,strerror(errno));
+				*/
+				if(errno == EINTR || errno == EWOULDBLOCK || errno == EAGAIN)
+				{
+					return -1;
+				}
+
+				/*  errno = 131(Connection reset by peer */
+				if( errno == 131 )
+					return -1;
+				
+				/* mips平台下，设置非阻塞模式，没有数据返回0，表示success，平台bug? (x86平台errno=0表示成功) */
+				if(errno == 0)
+					return -1;
+			}
+			/* 当服务器关闭，链接断开，select会立即返回可读，read后的len等于0*/
+			else if(recbytes == 0)
+			{
+				hb_print(LOG_ERR, "[Fail] read = 0 bytes, seesion have closed!");
+				return -1;
+			}
+			else 
+			{
+				memcpy(&revBuffer[recTolBytes],revdata,recbytes);
+				recTolBytes += recbytes;
+			}
 		}
 	}
 	
-	pHdr = (THDR *)revBuffer;
+	//pHdr = (THDR *)revBuffer;
 	memcpy(pHdr,revBuffer,sizeof(THDR));
 	
 	//des_decode((void *)(revBuffer + sizeof(THDR)), pResp, CHANLLENGE_KEY, sizeof(*pResp));
@@ -224,6 +253,7 @@ int net_send_challage_msg(struct heartbeat_route_client *hbrc,THDR* pHdr,char* p
 {
 	int fd;
     unsigned char deschal[64];
+	int ret;
 
 
 	fd = hbrc->hbrc_sockfd;
@@ -237,9 +267,14 @@ int net_send_challage_msg(struct heartbeat_route_client *hbrc,THDR* pHdr,char* p
     memset(deschal, 0, sizeof(deschal));
     //des_encode((const void *)pMsg, deschal, CHANLLENGE_KEY, msgLen);
     hbrc->chall_encode((const void *)pMsg, deschal, CHANLLENGE_KEY, msgLen);
-    
-    send(fd, pHdr, sizeof(THDR), 0);
+
+#if 1
+	send(fd, pHdr, sizeof(THDR), 0);
     send(fd, deschal, msgLen, 0);
+#else
+	ret = send(fd, pHdr, sizeof(THDR), 0);
+	hb_print(LOG_INFO, "ret = %d;",ret);
+#endif
 }
 
 /*
@@ -260,7 +295,6 @@ int net_recv_msg(struct heartbeat_route_client* hbrc)
     while(1)
     {
         int len = read(fd, buff, 256);
-
         if(len < 0)
         {
             buff[0] = 0;
@@ -272,7 +306,7 @@ int net_recv_msg(struct heartbeat_route_client* hbrc)
                 break;
             }
 			
-			/* mips平台下，设置非阻塞模式，没有数据返回0，表示success，平台bug? */
+			/* mips平台下，设置非阻塞模式，没有数据返回0，表示success，平台bug? (x86平台errno=0表示成功) */
 			if(errno == 0)
 				break;
 #if 0

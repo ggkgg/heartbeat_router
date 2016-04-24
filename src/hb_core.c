@@ -86,8 +86,8 @@ int search_hbs(struct heartbeat_route_client *hbrc)
 #else
 		TCHALRESP  Rchal_respmsg;
 		TCHALRESP  *pReq = &Rchal_respmsg;
-		THDR notifyRespHdr;
-		THDR *pHdr = &notifyRespHdr;
+		THDR hdr;
+		THDR *pHdr = &hdr;
 		
 		if (net_recv_challage_msg(hbrc,pHdr,pReq) < 0){
 			continue;
