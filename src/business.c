@@ -238,6 +238,7 @@ int business_report(u32_t vendor,char* vendorMsg,int vendorMsgLen)
 	msgLen += vendorMsgLen;
 	pHdr->pktlen = msgLen;
 	print_reportreq(pHdr,pReq);
+	hb_print(LOG_INFO,"************** med = %s",msg+sizeof(TREPORTREQ));
 
 	msg[msgLen] = '\0';
 	net_send_msg(hbrc,pHdr,msg,msgLen);

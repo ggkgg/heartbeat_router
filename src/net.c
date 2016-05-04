@@ -434,6 +434,9 @@ msgLen : 心跳数据报文长度
 int net_send_msg(struct heartbeat_route_client *hbrc,THDR* pHdr,char* pMsg,int msgLen)
 {
 	int fd = hbrc->hbrc_sockfd;
+	char netMsg[1024] = {0};
+	int hdrLen = 0;
+	int netLen = 0;
 
     if(fd <= 0)
     {
@@ -444,10 +447,16 @@ int net_send_msg(struct heartbeat_route_client *hbrc,THDR* pHdr,char* pMsg,int m
 	char encodeMsg[1024]={0};
 
 	//XORencode(pMsg, encodeMsg, hbrc->session_server_key, pHdr->pktlen);
-	hbrc->msg_encode(pMsg, encodeMsg, hbrc->session_server_key, pHdr->pktlen);
+	hbrc->msg_encode(pMsg, encodeMsg, hbrc->session_server_key,msgLen);
 
-	send(fd, pHdr, sizeof(THDR), 0);
-	send(fd, encodeMsg, pHdr->pktlen, 0);
+	hb_print(LOG_ERR,"########## encodeMsg = %s ",encodeMsg);
+
+	hdrLen = sizeof(THDR);
+    memcpy(netMsg, pHdr, hdrLen);
+    memcpy(netMsg + hdrLen, encodeMsg, msgLen);
+
+	netLen = hdrLen + msgLen;
+    send(fd, netMsg, netLen, 0);
 }
 
 

@@ -55,18 +55,16 @@ int main(int argc, char **argv)
 		cJSON_AddItemToObject(root,"value",value=cJSON_CreateArray());
 
 #if 1
+		cJSON_AddItemToArray(value,med=cJSON_CreateObject());
+		//cJSON_AddStringToObject(med,"med","12345678123456781234567812345678");
+		cJSON_AddStringToObject(med,"med","345670125200050503000000000027050503000000000027e207370008050300000000002704d39d92b60a4d59554e5630312e31390b47325f5a42204856312e301147325f5a42205356312e312e302e3231306233");
+
 #else
-		cJSON_AddItemToArray(value,cJSON_CreateString("1111111111"));
-		cJSON_AddItemToArray(value,cJSON_CreateString("2222222222"));
+	cJSON_AddItemToArray(value,cJSON_CreateString("1111111111"));
+	cJSON_AddItemToArray(value,cJSON_CreateString("2222222222"));
 
 #endif
-		//cJSON_AddItemToArray(value,med=cJSON_CreateObject());
-
-		cJSON_AddItemToArray(value,cJSON_CreateString("1111111111"));
-		cJSON_AddItemToArray(value,cJSON_CreateString("2222222222"));
-
-		//cJSON_AddStringToObject(med,"med","12345678123456781234567812345678");
-
+		
 		out = cJSON_Print(root);
 		int outLen = strlen(out);
 		
@@ -105,8 +103,7 @@ int main(int argc, char **argv)
 		cJSON_Delete(root);
 		free(out);
 
-		sleep(5);
-		break;
+		usleep(100*1000);
     }
     
     return 0;
