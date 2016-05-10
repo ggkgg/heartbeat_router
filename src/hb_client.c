@@ -133,7 +133,7 @@ static struct hb_server* get_hbs()
 	hbs = (struct hb_server*)malloc(sizeof(struct hb_server));
 	//hbs->hbs_sm = HBS_INVALID;
 	inet_aton("127.0.0.1",&hbs->hbs_ip);
-	hbs->hbs_port = 20020;
+	hbs->hbs_port = 0;
 	hbs->hbs_index = -1;
 	//hbs->hbs_sm = HBS_STRAT;
 	return hbs;
@@ -157,11 +157,21 @@ static int hb_isdns(char *dnsip)
 static int parse_hb_dnsip(struct heartbeat_route_client *hbrc, char *dnsip)
 {
     /* Establish string and get the first token: */
-    char* token = strtok(dnsip,",");
+    char* token = strtok(dnsip,",");	
     while( token != NULL )
     {
-        hb_print(LOG_INFO, "dnsip %s",token);
-		if(hb_isdns(token)) {				
+		char ipDns[32] = {0};
+		char port[6] = {0};
+		int iPort = 80;
+
+		/* 通过strlen解析，如果无端口号，port不表示为NULL, 而是strlen为0 */
+		sscanf(token,"%[^:]:%s",ipDns,port);
+		if(strlen(port) != 0 && atoi(port) != 0) {
+			iPort = atoi(port);
+		} 
+		
+        hb_print(LOG_INFO, "token(%s) dnsip(%s) iPort(%d)",token,ipDns,iPort);
+		if(hb_isdns(ipDns)) {				
 			/*
 			struct hostent
 			 {
@@ -175,8 +185,8 @@ static int parse_hb_dnsip(struct heartbeat_route_client *hbrc, char *dnsip)
 			struct hostent *he;
 			struct in_addr **addr_list;
 			int i;
-			if ((he = gethostbyname(token)) == NULL) {  // get the host info
-				hb_print(LOG_ERR, "Can't resolve domain (%s)", token);
+			if ((he = gethostbyname(ipDns)) == NULL) {  // get the host info
+				hb_print(LOG_ERR, "Can't resolve domain (%s)", ipDns);
 				return -1;
 			}
 			
@@ -192,15 +202,17 @@ static int parse_hb_dnsip(struct heartbeat_route_client *hbrc, char *dnsip)
 				struct hb_server* hbs;			
 				hbs = get_hbs();
 				hbs->hbs_ip = *addr_list[i];
+				hbs->hbs_port= iPort;
 				hbs->hbs_index = hbrc->hbs_count++;
 				hbrc->hbs_head[hbs->hbs_index] = hbs;
-				hb_print(LOG_INFO, "hbrc->hbs_count (%d) hbSever(%s)",hbrc->hbs_count,inet_ntoa(hbs->hbs_ip));					
+				hb_print(LOG_INFO, "hbrc->hbs_count (%d) hbSever(%s)",hbrc->hbs_count,inet_ntoa(hbs->hbs_ip));
 			}
 		}
 		else {
 			struct hb_server* hbs;			
 			hbs = get_hbs();
-			inet_aton(token,&hbs->hbs_ip);
+			inet_aton(ipDns,&hbs->hbs_ip);
+			hbs->hbs_port= iPort;
 			hbs->hbs_index = hbrc->hbs_count++;
 			hbrc->hbs_head[hbs->hbs_index] = hbs;
 			hb_print(LOG_INFO, "hbrc->hbs_count (%d) hbSever(%s)",hbrc->hbs_count,inet_ntoa(hbs->hbs_ip));			

@@ -150,7 +150,7 @@ void thread_echo(void *arg)
 			} else{
 				debug(LOG_ERR, "last_req_echosn <  last_resp_echosn ??????? ");
 			}
-			/* 如果心跳包丢失超过3个，表示网关上行数据出现了问题，心跳路由客户端状态变成清理状态。 */
+			/* 如果心跳包丢失超过3个，表示网关上行数据出现了问题(比如中间路由设备发出rst报文【定向3G网卡】)，心跳路由客户端状态变成清理状态。 */
 			if ( hbrc->lost_echo_count > 3 ) {
 				debug(LOG_ERR, "[ECHO -> CLEAN] echo responce timeout !");
 				G.echoThread.pause_flag = 1;
