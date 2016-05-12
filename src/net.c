@@ -1,7 +1,7 @@
 #include "hb_core.h"
 #include "net.h"
 
-
+extern pthread_mutex_t SEND_MUTEX;
 
 int set_noblock(int sClient)
 {
@@ -456,7 +456,14 @@ int net_send_msg(struct heartbeat_route_client *hbrc,THDR* pHdr,char* pMsg,int m
     memcpy(netMsg + hdrLen, encodeMsg, msgLen);
 
 	netLen = hdrLen + msgLen;
+	
+#if 0
     send(fd, netMsg, netLen, 0);
+#else
+	pthread_mutex_lock(&SEND_MUTEX);
+	send(fd, netMsg, netLen, 0);
+	pthread_mutex_unlock(&SEND_MUTEX);
+#endif
 }
 
 
@@ -644,6 +651,7 @@ int net_notify(struct heartbeat_route_client *hbrc)
 	sendNotifyRespMsg.returnCode = NOF_OK;
 
 	int msgLen = sizeof(TNOTIFYRESP);
+	pHdr->pktlen = msgLen;
 	print_notifyresp(pHdr,&sendNotifyRespMsg);
 
 #if 0

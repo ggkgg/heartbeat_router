@@ -1,6 +1,8 @@
 #include "hb_client.h"
 
 struct glob_arg G;
+pthread_mutex_t SEND_MUTEX = PTHREAD_MUTEX_INITIALIZER;
+
 
 #define DEBUG_IPC 0
 
@@ -406,7 +408,7 @@ static int init_hbrc(struct heartbeat_route_client** hbrcp)
 #endif
 
 #if x86
-	char emac_src[16] = "112233445566";
+	char emac_src[16] = "112233005566";
 	strncpy(emac,emac_src,strlen(emac_src));
 #endif
 

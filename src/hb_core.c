@@ -115,8 +115,13 @@ int dispatch_notify(struct heartbeat_route_client* hbrc, char *pBuff)
     pHdr = (THDR *)pBuff;
 
 #if CVNWARE
-	hb_print(LOG_INFO,"dispatch nofity,inform tr069!");
+	hb_print(LOG_INFO,"[CVNWARE] dispatch nofity,inform tr069!");
 	HEARTBEAT_EventSend();
+#endif
+
+#if MTK
+	hb_print(LOG_INFO,"[MTK] dispatch nofity,inform tr069!");
+	system("kill -USR2 `ps|grep cwmpd|grep -v grep|awk -F' ' '{print $1}'|sed -n 1p`");
 #endif
 
 #if 0

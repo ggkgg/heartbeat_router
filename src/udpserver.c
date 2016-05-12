@@ -16,7 +16,7 @@
  
 extern struct glob_arg G;
 
-#define	MAXLINE	1024		/* to see datagram truncation */
+#define	MAXLINE	2048	/* to see datagram truncation */
 
 int net_socket(int family, int type, int protocol)
 {
@@ -129,11 +129,11 @@ int process_recvmsg(int udpfd)
 	ipCli = (ipc_udp_client_st *)malloc(sizeof(ipc_udp_client_st));
 	bzero(ipCli,sizeof(ipc_udp_client_st));
 	ipCli->recvMsg = (char *)malloc(MAXLINE*sizeof(char));
+	memset(ipCli->recvMsg,0,MAXLINE*sizeof(char));
 	
 	ipCli->listenfd = udpfd;
 	len = sizeof(ipCli->cliAddr);
 	ipCli->recvMsgLen = net_recvfrom(ipCli->listenfd, ipCli->recvMsg, MAXLINE, 0, (struct sockaddr*)&ipCli->cliAddr, &len);
-
 
 	printf("ipCli->recvMsg(%d)(%s)\n",ipCli->recvMsgLen,ipCli->recvMsg);
 

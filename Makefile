@@ -6,7 +6,7 @@ LIB = lib
 $(shell mkdir obj)
 
 ####### x86 mips463 mips342 ######
-#PLATFORM := mips342
+#PLATFORM := x86
 PLATFORM := mips342
 
 DEBUG_CMP := y
