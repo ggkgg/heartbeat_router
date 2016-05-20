@@ -95,7 +95,7 @@ int send_issuedata_to_mye(char* issueReqMsg)
 
 	cJSON_AddStringToObject(root,"cmd_url","/heartbeatclient/business");
 
-	cJSON_AddStringToObject(root,"cmd_name","report");
+	cJSON_AddStringToObject(root,"cmd_name","issue");
 
 	cJSON_AddStringToObject(root,"vendor","myed");
 	

@@ -67,15 +67,15 @@ void call_ipchelper(ipc_udp_client_st *ipCli)
 	if (parse_json_udpmsg(ipCli) < 0) {
 		hb_print(LOG_ERR,"parse json udp packet error!");
 		delete_ipcli(ipCli);
-		return -1;
+		return;
 	}
 
 	/*  通过vendor字段分发数据  */
 	if (dispatch_json_udpmsg(ipCli) < 0) {
 		hb_print(LOG_ERR,"dispatch json udp packet error!");
 		delete_ipcli(ipCli);
-		return -1;
+		return;
 	}
-	return 0;
+	return;
 }
 
