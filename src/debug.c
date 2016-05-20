@@ -23,8 +23,14 @@ _debug(char *filename, int line, int level, char *format, ...)
 */
 	time_t now;
  	struct tm *tm_now;
+	/*gmtime得到的是0时区时间，localtime获取本地时区时间*/
+#if 0 
 	time(&now);
 	tm_now = gmtime(&now);
+#else
+	now = time(NULL);
+	tm_now = localtime(&now);
+#endif
 
     if (debug_global.debuglevel >= level) {
 		fprintf(stderr, "[%d][%04d-%02d-%02d %02d:%02d:%02d][%u](%s:%d) ", level,time_format,
