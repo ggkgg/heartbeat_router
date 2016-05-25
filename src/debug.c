@@ -2,7 +2,7 @@
 
 struct debug_info debug_global;
 
-#define time_format tm_now->tm_year+1900,tm_now->tm_mon,tm_now->tm_mday,tm_now->tm_hour,tm_now->tm_min,tm_now->tm_sec
+#define time_format tm_now->tm_year+1900,tm_now->tm_mon+1,tm_now->tm_mday,tm_now->tm_hour,tm_now->tm_min,tm_now->tm_sec
 
 void
 _debug(char *filename, int line, int level, char *format, ...)
@@ -50,4 +50,15 @@ _debug(char *filename, int line, int level, char *format, ...)
 	}
 
 }
+
+void _critTrace(const char * _fmt, ...)
+{
+	va_list vlist;				
+	openlog("hb_client ", LOG_PID|LOG_CONS, LOG_USER);		
+	va_start(vlist, _fmt); 
+	vsyslog(LOG_CRIT, _fmt, vlist); 				
+	va_end(vlist);								
+	closelog(); 											
+}
+
 

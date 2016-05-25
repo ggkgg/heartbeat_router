@@ -41,7 +41,7 @@ int hb_connect(char *host, int port)
     int clientfd = socket(AF_INET, SOCK_STREAM, 0);
     if(0 >= clientfd)
     {
-        printf("socket failed\n");
+        hb_print(LOG_ERR,"socket failed\n");
         return -1;
     }
 
@@ -55,7 +55,8 @@ int hb_connect(char *host, int port)
     ret = connect(clientfd, (struct sockaddr *)&addr, sizeof(addr));
     if (0 == ret)
     {
-        printf("connect to heartbeat server ok");
+        //printf("connect to heartbeat server ok");
+		hb_log(LOG_INFO, "connect to heartbeat server(%s:$d) ok!\n",host,port);
         return (clientfd);
     }
 
@@ -67,28 +68,29 @@ int hb_connect(char *host, int port)
     ret = select(clientfd+1, &read_set, &write_Set, NULL, &tm);
     if (0 > ret)
     {
-        printf("select failed\n");
+        hb_print(LOG_ERR,"select failed\n");
         close(clientfd);
         return (-1);
     }
 
     if (0 == ret)
     {   
-        printf("timeout, connect to server failed\n");
+        hb_print(LOG_ERR,"timeout, connect to server failed\n");
         close(clientfd);
         return (-1);
     }
 
     if (FD_ISSET(clientfd, &read_set) && FD_ISSET(clientfd,  &write_Set)) 
     {
-        printf("readable and writable, Connect to server failed\n");
+        hb_print(LOG_ERR,"readable and writable, Connect to server failed\n");
         close(clientfd);
         return (-1);
     }
 
     if (!FD_ISSET(clientfd, &read_set) && FD_ISSET(clientfd,  &write_Set)) 
     {
-        printf("Unreadable but writable, connect to server OK\n");
+        hb_print(LOG_INFO,"Unreadable but writable, connect to server OK\n");
+		hb_log(LOG_INFO, "connect to heartbeat server(%s:$d) successfully!\n",host,port);
         return (clientfd);
     }
 

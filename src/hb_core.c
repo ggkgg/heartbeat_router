@@ -157,7 +157,8 @@ void thread_echo(void *arg)
 			}
 			/* 如果心跳包丢失超过3个，表示网关上行数据出现了问题(比如中间路由设备发出rst报文【定向3G网卡】)，心跳路由客户端状态变成清理状态。 */
 			if ( hbrc->lost_echo_count > 3 ) {
-				debug(LOG_ERR, "[ECHO -> CLEAN] echo responce timeout !");
+				//debug(LOG_ERR, "[ECHO -> CLEAN] echo responce timeout !");
+				hb_log(LOG_ERR, "[ECHO -> CLEAN] echo responce timeout !");
 				G.echoThread.pause_flag = 1;
 				hbrc->hbrc_sm = HBRC_CLEAN;				
 			}
@@ -237,7 +238,8 @@ void thread_recv(void *arg)
 		if (FD_ISSET(sock_fd, &read_fds)) {
 			/* 当返回值小于0的时候，只能表示服务器被关闭，如果是网关上行不通，则不能检测出来 */
 			if (net_recv_msg(hbrc) < 0) {
-				debug(LOG_ERR, "[ECHO -> CLEAN] heartbeat server session have closed !");
+				//debug(LOG_ERR, "[ECHO -> CLEAN] heartbeat server session have closed !");
+				hb_log(LOG_ERR, "[ECHO -> CLEAN] heartbeat server session have closed !");
 				G.recvThread.pause_flag = 1;
 				hbrc->hbrc_sm = HBRC_CLEAN;
 			}	

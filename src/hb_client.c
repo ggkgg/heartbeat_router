@@ -31,7 +31,6 @@ static int init_resource()
 	debug_global.log_syslog = DEFAULT_LOG_SYSLOG;
 	debug_global.syslog_facility = DEFAULT_SYSLOG_FACILITY;
 	
-	hb_print(LOG_INFO, "init_resource success!");
 	return 0;
 }
 
@@ -427,12 +426,15 @@ int main(int argc, char **argv)
 	void *status;
 	struct heartbeat_route_client *hbrc;	
 
+
 	//初始化必要的资源	
 	if( init_resource() < 0 ){
 		hb_print(LOG_ERR, " init_resource fail !");
 		return -1;	
 	}	
 	init_signals();
+
+	hb_log(LOG_INFO, "Start Up Hb_client! \n");
 
 	if( init_hbrc(&G.hbrc) < 0 ){
 		return -1;	

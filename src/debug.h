@@ -22,4 +22,13 @@ struct debug_info {
 
 /** @internal */
 void _debug(char *filename, int line, int level, char *format, ...);
+
+#define critTrace(level, format...)									\
+	do {														\
+		_debug(__FILE__, __LINE__,level,format);				 	    \
+		_critTrace(format);										\
+	} while (0)
+	
+void _critTrace(const char *_fmt, ...);
+
 #endif /* _DEBUG_H_ */

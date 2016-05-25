@@ -26,6 +26,8 @@
 
 
 #define hb_print(level, format...) debug(level, format)
+#define hb_log(level, format...) critTrace(level, format)
+
 extern struct debug_info debug_global;
 
 #define DEFAULT_DEBUGLEVEL LOG_INFO
