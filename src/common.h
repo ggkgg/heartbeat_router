@@ -23,6 +23,8 @@
 #include <arpa/inet.h> //inet_ntoa
 
 #include "debug.h"
+#include "mytype.h"
+#include "protype.h"
 
 
 #define hb_print(level, format...) debug(level, format)

@@ -1,22 +1,6 @@
 #include "udpserver.h"
+#include "common.h"
 
-#if 0
-#include <stdlib.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <getopt.h>
-#include <sys/wait.h> 
-#include <unistd.h>
-#include <sys/time.h>
-#include <time.h>
-#include <fcntl.h>
-#include <string.h> 
-#endif
-
- 
-extern struct glob_arg G;
-
-#define	MAXLINE	2048	/* to see datagram truncation */
 
 int net_socket(int family, int type, int protocol)
 {
@@ -115,54 +99,19 @@ void delete_ipcli(ipc_udp_client_st *ipCli)
 	free(ipCli);
 }
 
-int process_recvmsg(int udpfd)
-{
-	char mesg[MAXLINE];
-	socklen_t	len;
-	ipc_udp_client_st *ipCli;
-
-	if(G.udpThread.pause_flag) {
-		return 0;
-	}
-
-
-	ipCli = (ipc_udp_client_st *)malloc(sizeof(ipc_udp_client_st));
-	bzero(ipCli,sizeof(ipc_udp_client_st));
-	ipCli->recvMsg = (char *)malloc(MAXLINE*sizeof(char));
-	memset(ipCli->recvMsg,0,MAXLINE*sizeof(char));
-	
-	ipCli->listenfd = udpfd;
-	len = sizeof(ipCli->cliAddr);
-	ipCli->recvMsgLen = net_recvfrom(ipCli->listenfd, ipCli->recvMsg, MAXLINE, 0, (struct sockaddr*)&ipCli->cliAddr, &len);
-
-	printf("ipCli->recvMsg(%d)(%s)\n",ipCli->recvMsgLen,ipCli->recvMsg);
-
-	/*  当前udp只处理ipc消息，调用錭all_ipchelper触发ipc消息解析  */
-	if (call_ipchelper(ipCli) < 0) {
-		hb_print(LOG_ERR,"parse json udp packet error!");
-		delete_ipcli(ipCli);
-		return -1;
-	}
-
 
 #if 0
-	ipCli->sendMsg = strdup(ipCli->recvMsg);
-	ipCli->sendMsgLen = ipCli->recvMsgLen;
-	printf("ipCli->sendMsg(%d)(%s)\n",ipCli->sendMsgLen,ipCli->sendMsg);
-	net_sendto(ipCli->listenfd, ipCli->sendMsg, ipCli->sendMsgLen, 0, (struct sockaddr*) &ipCli->cliAddr, len);
-#endif
-	delete_ipcli(ipCli);
-	return 0;
-}
-
 int udp_server(int port)
 {
 	int				udpfd,nready, maxfdp1;
 	fd_set				rset;
 	struct sockaddr_in  servaddr;
-	pthread_t pth_ids;
 	int ret;
+	//ipc_udp_client_st *ipServ;
 
+
+	//ipServ = (ipc_udp_server_st *)malloc(sizeof(ipc_udp_server_st));
+	//bzero(ipServ,sizeof(ipc_udp_client_st));
 
 	udpfd = net_socket(AF_INET, SOCK_DGRAM, 0);
 
@@ -203,4 +152,70 @@ int udp_server(int port)
 		}
 	}
 }
+#else
+ipc_udp_server_st* get_udp_server(int port)
+{
+	int	udpfd;
+	struct sockaddr_in  servaddr;
+	int ret;
+	ipc_udp_server_st *ipServ;
+	
+
+	ipServ = (ipc_udp_server_st *)malloc(sizeof(ipc_udp_server_st));
+	bzero(ipServ,sizeof(ipc_udp_server_st));
+
+	udpfd = net_socket(AF_INET, SOCK_DGRAM, 0);
+	ipServ->listenfd = udpfd;
+
+	bzero(&servaddr, sizeof(servaddr));
+	servaddr.sin_family      = AF_INET;
+	servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+	servaddr.sin_port        = htons(port);
+
+	net_bind(udpfd, (struct sockaddr*) &servaddr, sizeof(servaddr));
+
+	return ipServ;
+}
+
+#if 0
+void set_udp_server_private(ipc_udp_client_st* ipcServ, void *priv)
+{
+	ipServ->priv_data = priv;
+}
+
+void set_udp_server_recv_func(ipc_udp_client_st* ipcServ, int(*recv_func)(void*))
+{
+	ipServ->recv_msg = recv_func;
+}
+#endif
+
+void start_recv_msg(ipc_udp_server_st* ipcServ)
+{
+	fd_set	rset;
+	int	 lintenFd,nready, maxfdp1;
+
+	lintenFd = ipcServ->listenfd;
+
+	FD_ZERO(&rset);
+	maxfdp1 = lintenFd + 1;
+	for ( ; ; ) { 
+		FD_SET(lintenFd, &rset);
+		if ( (nready = select(maxfdp1, &rset, NULL, NULL, NULL)) < 0) {
+			if (errno == EINTR)
+				continue;		/* back to for() */
+			else
+				hb_print(LOG_ERR,"select error");
+		}
+
+
+		if (FD_ISSET(lintenFd, &rset)) {
+			if (ipcServ->recv_msg(ipcServ) < 0) {
+				hb_print(LOG_ERR,"udp packet error!");
+				continue;
+			}
+
+		}
+	}
+}
+#endif
 

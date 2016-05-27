@@ -1,6 +1,9 @@
 #ifndef _NET_H
 #define _NET_H
 
+#include "hb_core.h"
+
+
 int set_noblock(int sClient);
 int hb_connect(char *host, int port);
 int net_recv_msg(struct heartbeat_route_client* hbrc);

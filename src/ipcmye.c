@@ -1,9 +1,16 @@
+#include "hb_core.h"
 #include "udpserver.h"
+#include "common.h"
 
 void call_mye_interface(ipc_udp_client_st *ipCli)
 {
 	u32_t vendor;
 	u32_t *pVendor;
+	struct heartbeat_route_client* hbrc;
+	ipc_udp_server_st *ipcServ;
+
+	ipcServ = ipCli->ipcServ;
+	hbrc = (struct heartbeat_route_client*)ipcServ->priv_data;
 	
 	pVendor = (u32_t*)ipCli->jsonVendor; 
 	vendor = *pVendor;
@@ -21,8 +28,9 @@ void call_mye_interface(ipc_udp_client_st *ipCli)
 	{
 		cJSON *pJsonMedArray = cJSON_GetArrayItem(pJsonValue, iCnt);
 		cJSON *pJsonMed = cJSON_GetObjectItem(pJsonMedArray, "med");
-		char *pMed = pJsonMed->valuestring;;
-		business_report(vendor,pMed,strlen(pMed));
+		char *pMed = pJsonMed->valuestring;
+		
+		business_report(hbrc,vendor,pMed,strlen(pMed));
 	}
 #elif 0
 	cJSON *pJsonMedArray = cJSON_GetArrayItem(pJsonValue, iCnt);

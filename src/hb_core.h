@@ -2,8 +2,6 @@
 #define _HB_CORE_H
 
 #include "common.h"
-#include "protype.h"
-
 
 enum hbrc_sm_type {
 	HBRC_INVALID = 0,
@@ -89,23 +87,12 @@ struct udp_thread {
 };
 
 
-struct glob_arg {
-	/*command*/
-	char* configFile;
-	int debuglevel;
-	int log_syslog;
-	//struct in_addr beforeserverip;
-	
-	/*hbrc*/
-	struct heartbeat_route_client *hbrc;
-
-	
-	/*thread*/
-	struct echo_thread echoThread;
-	struct recv_thread recvThread;
-	struct dispatch_thread dispatchThread;
-	struct udp_thread udpThread;
-};
-
 #define MAX_HB_COUNT 10
+#define	MAXLINE	2048	/* to see datagram truncation */
+
+extern struct echo_thread g_echoThread;
+extern struct recv_thread g_recvThread;
+extern struct udp_thread g_udpThread;
+
+int init_hbrc(struct heartbeat_route_client** hbrcp);
 #endif

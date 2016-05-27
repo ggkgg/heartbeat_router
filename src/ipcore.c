@@ -2,7 +2,7 @@
 
 #include "cJSON.h"
 #include "udpserver.h"
-
+#include "common.h"
 
 
 int parse_json_udpmsg(ipc_udp_client_st *ipCli) {

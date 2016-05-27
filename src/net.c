@@ -1,4 +1,3 @@
-#include "hb_core.h"
 #include "net.h"
 
 extern pthread_mutex_t SEND_MUTEX;
@@ -610,7 +609,6 @@ int net_echo(struct heartbeat_route_client *hbrc)
     pHdr->sn = hbrc->sendsn++;
 
 	/* 记录收到心跳回应包对应的sn号 */
-	debug(LOG_INFO, "echo request last_sn(%d)",pHdr->sn);
 	hbrc->last_req_echosn = pHdr->sn;
 
     TECHOREQ echo_reqmsg;

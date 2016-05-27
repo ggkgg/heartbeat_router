@@ -15,7 +15,7 @@ static int sendsn = 10002;
 
 static int init_resource()
 {	
-
+#if 0
 	G.configFile = strdup(DEFAULT_CONFIG_PATH);
 	G.echoThread.echo_thpid = 0;
 	G.echoThread.pause_flag = 1;
@@ -26,11 +26,23 @@ static int init_resource()
 
 	G.udpThread.udpserver_thpid = 0;
 	G.udpThread.pause_flag = 1;
-	
+#else
+	G.configFile = strdup(DEFAULT_CONFIG_PATH);
+
+	g_echoThread.echo_thpid = 0;
+	g_echoThread.pause_flag = 1;
+
+	g_recvThread.recv_thpid = 0;
+	g_recvThread.pause_flag = 1;
+
+
+	g_udpThread.udpserver_thpid = 0;
+	g_udpThread.pause_flag = 1;
+#endif
+
 	debug_global.debuglevel = DEFAULT_DEBUGLEVEL;
 	debug_global.log_syslog = DEFAULT_LOG_SYSLOG;
 	debug_global.syslog_facility = DEFAULT_SYSLOG_FACILITY;
-	
 	return 0;
 }
 
@@ -336,87 +348,6 @@ static int parse_file(struct heartbeat_route_client* hbrc)
 	parse_hb_dnsip(hbrc,hbDefaultAddr);
 	parse_hb_dnsip(hbrc,hbAddr);
 	
-	return 0;
-}
-
-
-static int init_default_hbc_config(struct hbc_conf *conf)
-{
-	conf->echo_interval = 20;
-	conf->retry_count = 3;
-	conf->retry_interval = 30;
-	conf->noecho_interval = 60;
-}
-
-static int init_hbrc(struct heartbeat_route_client** hbrcp)
-{
-	struct heartbeat_route_client *hbrc;
-	struct hb_server* hbs;
-	struct hbc_conf* hbcConf;
-   	char emac[16] = {0}; 
-	
-	*hbrcp = (struct heartbeat_route_client *)malloc(sizeof(struct heartbeat_route_client));
-	hbrc = *hbrcp;
-	hbrc->hbrc_sm = HBRC_INVALID;
-
-
-	/* connect conf*/
-	hbrc->equipmentSn[0] = '\0';
-	hbrc->sendsn = 0;
-	hbrc->recvsn = 0;
-	hbrc->hbrc_sockfd = 0;
-	hbrc->session_client_key = 0;
-	hbrc->session_server_key = 0;
-
-	hbrc->last_req_echosn = 0;
-	hbrc->last_resp_echosn = 0;
-	hbrc->lost_echo_count = 0;
-
-	/* recv buff*/
-	hbrc->gbuf = NULL;
-	hbrc->dataLen = 0;
-	hbrc->maxLen = 0;
-
-	/*function*/
-	hbrc->chall_encode = des_encode;
-	hbrc->chall_decode = des_decode;
-	hbrc->msg_encode = XORencode;
-	hbrc->msg_decode = XORencode;
-
-	/* init hbs  */
-	hbrc->hbs_count = 0;
-	hbrc->hbs_head = (struct hb_server **)malloc(MAX_HB_COUNT*sizeof(struct hb_server *));
-
-
-	/* init hbrc conf */
-	//hbcConf = (struct hbc_conf *)malloc(sizeof(struct hbc_conf));
-	//init_default_hbc_config(hbcConf);	
-	//hbrc->hbrc_conf = hbcConf;
-	//(*hbrcp)->hbrc_conf = (struct hbc_conf *)malloc(sizeof(struct hbc_conf));
-	init_default_hbc_config(&hbrc->hbrc_conf);	
-
-#if CVNWARE
-	DRV_AmtsGetEMac(emac);
-#endif
-	
-#if MTK
-	if(amts_getmac(emac) < 0) {
-		hb_print(LOG_ERR,"get device mac error");
-		return -1;
-	}
-#endif
-
-#if x86
-	char emac_src[16] = "112233005566";
-	strncpy(emac,emac_src,strlen(emac_src));
-#endif
-
-
-	hb_print(LOG_INFO,"############ emac = %s",emac);
-	sscanf(emac,"%02x%02x%02x%02x%02x%02x",
-		&hbrc->equipmentSn[0],&hbrc->equipmentSn[1],&hbrc->equipmentSn[2],
-		&hbrc->equipmentSn[3],&hbrc->equipmentSn[4],&hbrc->equipmentSn[5]); 
-
 	return 0;
 }
 

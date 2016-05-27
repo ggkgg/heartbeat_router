@@ -1,6 +1,15 @@
+#include "protype.h"
+#include "des.h"
+#include "xorcode.h"
 #include "hb_core.h"
+#include "udpserver.h"
+
 
 extern struct glob_arg G;
+
+struct echo_thread g_echoThread;
+struct recv_thread g_recvThread;
+struct udp_thread g_udpThread;
 
 
 /* 轮询心跳服务器，如果全部失败，返回-1*/
@@ -140,43 +149,46 @@ int dispatch_notify(struct heartbeat_route_client* hbrc, char *pBuff)
 void thread_echo(void *arg)
 {
 	struct heartbeat_route_client* hbrc = (struct heartbeat_route_client*)arg;
-	//struct heartbeat_route_client* hbrc = (struct heartbeat_route_client*)&arg;
 	pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 	pthread_mutex_t cond_mutex = PTHREAD_MUTEX_INITIALIZER;
 	struct	timespec timeout;
 	
 	while (1) {
-		if(!G.echoThread.pause_flag) {
-			debug(LOG_INFO, "echo send sn(%d) last_sn(%d)",hbrc->last_req_echosn,hbrc->last_resp_echosn);
-			if ( hbrc->last_req_echosn > hbrc->last_resp_echosn ) {
-				hbrc->lost_echo_count++;				
-			} else if ( hbrc->last_req_echosn == hbrc->last_resp_echosn ) {
-				hbrc->lost_echo_count = 0;
-			} else{
-				debug(LOG_ERR, "last_req_echosn <  last_resp_echosn ??????? ");
-			}
-			/* 如果心跳包丢失超过3个，表示网关上行数据出现了问题(比如中间路由设备发出rst报文【定向3G网卡】)，心跳路由客户端状态变成清理状态。 */
-			if ( hbrc->lost_echo_count > 3 ) {
-				//debug(LOG_ERR, "[ECHO -> CLEAN] echo responce timeout !");
-				hb_log(LOG_ERR, "[ECHO -> CLEAN] echo responce timeout !");
-				G.echoThread.pause_flag = 1;
-				hbrc->hbrc_sm = HBRC_CLEAN;				
-			}
-			net_echo(hbrc);
-		}
 		/* Sleep for config.crondinterval seconds... */
 		//timeout.tv_sec = time(NULL) + hbrc->hbrc_conf.echo_interval;
 		timeout.tv_sec = time(NULL) + 20;
 		timeout.tv_nsec = 0;
-	
+
 		/* Mutex must be locked for pthread_cond_timedwait... */
 		pthread_mutex_lock(&cond_mutex);
 		
 		/* Thread safe "sleep" */
 		pthread_cond_timedwait(&cond, &cond_mutex, &timeout);
-
+		
 		/* No longer needs to be locked */
 		pthread_mutex_unlock(&cond_mutex);
+
+		if(g_echoThread.pause_flag) {
+			continue;
+		}
+
+		debug(LOG_INFO, "last_reqsn(%d) last_respsn(%d)",hbrc->last_req_echosn,hbrc->last_resp_echosn);
+		if ( hbrc->last_req_echosn > hbrc->last_resp_echosn ) {
+			hbrc->lost_echo_count++;				
+		} else if ( hbrc->last_req_echosn == hbrc->last_resp_echosn ) {
+			hbrc->lost_echo_count = 0;
+		} else{
+			debug(LOG_ERR, "last_req_echosn <  last_resp_echosn ??????? ");
+		}
+		
+		/* 如果心跳包丢失超过3个，表示网关上行数据出现了问题(比如中间路由设备发出rst报文【定向3G网卡】)，心跳路由客户端状态变成清理状态。 */
+		if ( hbrc->lost_echo_count > 3 ) {
+			//debug(LOG_ERR, "[ECHO -> CLEAN] echo responce timeout !");
+			hb_log(LOG_ERR, "[ECHO -> CLEAN] echo responce timeout !");
+			g_echoThread.pause_flag = 1;
+			hbrc->hbrc_sm = HBRC_CLEAN;				
+		}
+		net_echo(hbrc);
 	}
 }
 
@@ -193,7 +205,7 @@ void thread_recv(void *arg)
 		int maxsock;
 		struct timeval tv;
 		
-		if(G.recvThread.pause_flag) {
+		if(g_recvThread.pause_flag) {
 			pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 			pthread_mutex_t cond_mutex = PTHREAD_MUTEX_INITIALIZER;
 			struct	timespec timeout;	
@@ -240,7 +252,7 @@ void thread_recv(void *arg)
 			if (net_recv_msg(hbrc) < 0) {
 				//debug(LOG_ERR, "[ECHO -> CLEAN] heartbeat server session have closed !");
 				hb_log(LOG_ERR, "[ECHO -> CLEAN] heartbeat server session have closed !");
-				G.recvThread.pause_flag = 1;
+				g_recvThread.pause_flag = 1;
 				hbrc->hbrc_sm = HBRC_CLEAN;
 			}	
 			hb_print(LOG_DEBUG, " complete one recv data !");
@@ -255,9 +267,142 @@ void thread_recv(void *arg)
 
 }
 
+
+int process_ipc_msg(ipc_udp_server_st *ipcServ)
+{
+	int udpfd;
+	char mesg[MAXLINE];
+	socklen_t	len;
+	ipc_udp_client_st *ipCli;
+
+	if(g_udpThread.pause_flag) {
+		return 0;
+	}
+
+
+	udpfd = ipcServ->listenfd;
+
+	ipCli = (ipc_udp_client_st *)malloc(sizeof(ipc_udp_client_st));
+	bzero(ipCli,sizeof(ipc_udp_client_st));
+	ipCli->recvMsg = (char *)malloc(MAXLINE*sizeof(char));
+	memset(ipCli->recvMsg,0,MAXLINE*sizeof(char));
+	ipCli->ipcServ = ipcServ;
+	
+	len = sizeof(ipCli->cliAddr);
+	ipCli->recvMsgLen = net_recvfrom(udpfd, ipCli->recvMsg, MAXLINE, 0, (struct sockaddr*)&ipCli->cliAddr, &len);
+
+	printf("ipCli->recvMsg(%d)(%s)\n",ipCli->recvMsgLen,ipCli->recvMsg);
+
+	/*  当前udp只处理ipc消息，调用錭all_ipchelper触发ipc消息解析  */
+	if (call_ipchelper(ipCli) < 0) {
+		hb_print(LOG_ERR,"parse json udp packet error!");
+		delete_ipcli(ipCli);
+		return -1;
+	}
+
+
+#if 0
+	ipCli->sendMsg = strdup(ipCli->recvMsg);
+	ipCli->sendMsgLen = ipCli->recvMsgLen;
+	printf("ipCli->sendMsg(%d)(%s)\n",ipCli->sendMsgLen,ipCli->sendMsg);
+	net_sendto(ipCli->listenfd, ipCli->sendMsg, ipCli->sendMsgLen, 0, (struct sockaddr*) &ipCli->cliAddr, len);
+#endif
+	delete_ipcli(ipCli);
+	return 0;
+
+}
+
+
 void thread_udp_server(void *arg)
 {
-	udp_server(10400);
+	struct heartbeat_route_client* hbrc = (struct heartbeat_route_client*)arg;
+	ipc_udp_server_st *ipcServ;
+
+	ipcServ = get_udp_server(10400);
+	ipcServ->priv_data = (void *)hbrc;
+	ipcServ->recv_msg = process_ipc_msg;
+	start_recv_msg(ipcServ);
+}
+
+static int init_default_hbc_config(struct hbc_conf *conf)
+{
+	conf->echo_interval = 20;
+	conf->retry_count = 3;
+	conf->retry_interval = 30;
+	conf->noecho_interval = 60;
+}
+
+
+int init_hbrc(struct heartbeat_route_client** hbrcp)
+{
+	struct heartbeat_route_client *hbrc;
+	struct hb_server* hbs;
+	struct hbc_conf* hbcConf;
+   	char emac[16] = {0}; 
+	
+	*hbrcp = (struct heartbeat_route_client *)malloc(sizeof(struct heartbeat_route_client));
+	hbrc = *hbrcp;
+	hbrc->hbrc_sm = HBRC_INVALID;
+
+
+	/* connect conf*/
+	hbrc->equipmentSn[0] = '\0';
+	hbrc->sendsn = 0;
+	hbrc->recvsn = 0;
+	hbrc->hbrc_sockfd = 0;
+	hbrc->session_client_key = 0;
+	hbrc->session_server_key = 0;
+
+	hbrc->last_req_echosn = 0;
+	hbrc->last_resp_echosn = 0;
+	hbrc->lost_echo_count = 0;
+
+	/* recv buff*/
+	hbrc->gbuf = NULL;
+	hbrc->dataLen = 0;
+	hbrc->maxLen = 0;
+
+	/*function*/
+	hbrc->chall_encode = des_encode;
+	hbrc->chall_decode = des_decode;
+	hbrc->msg_encode = XORencode;
+	hbrc->msg_decode = XORencode;
+
+	/* init hbs  */
+	hbrc->hbs_count = 0;
+	hbrc->hbs_head = (struct hb_server **)malloc(MAX_HB_COUNT*sizeof(struct hb_server *));
+
+
+	/* init hbrc conf */
+	//hbcConf = (struct hbc_conf *)malloc(sizeof(struct hbc_conf));
+	//init_default_hbc_config(hbcConf);	
+	//hbrc->hbrc_conf = hbcConf;
+	//(*hbrcp)->hbrc_conf = (struct hbc_conf *)malloc(sizeof(struct hbc_conf));
+	init_default_hbc_config(&hbrc->hbrc_conf);	
+
+#if CVNWARE
+	DRV_AmtsGetEMac(emac);
+#endif
+	
+#if MTK
+	if(amts_getmac(emac) < 0) {
+		hb_print(LOG_ERR,"get device mac error");
+		return -1;
+	}
+#endif
+
+#if x86
+	char emac_src[16] = "112233005566";
+	strncpy(emac,emac_src,strlen(emac_src));
+#endif
+
+
+	hb_print(LOG_INFO,"############ emac = %s",emac);
+	sscanf(emac,"%02x%02x%02x%02x%02x%02x",
+		&hbrc->equipmentSn[0],&hbrc->equipmentSn[1],&hbrc->equipmentSn[2],
+		&hbrc->equipmentSn[3],&hbrc->equipmentSn[4],&hbrc->equipmentSn[5]); 
+
+	return 0;
 }
 
 static int clean_hbrc(struct heartbeat_route_client* hbrc)
@@ -304,34 +449,34 @@ int hb_do_process(struct heartbeat_route_client* hbrc)
 			hbrc->hbrc_sm = HBRC_INIT;
 		}
 		else if ( HBRC_CHANLLENGE == hbrc->hbrc_sm ) {
-			if(G.echoThread.echo_thpid == 0 ){
+			if(g_echoThread.echo_thpid == 0 ){
 				debug(LOG_INFO, "Creation of thread_echo!");
-				ret = pthread_create(&G.echoThread.echo_thpid, NULL, (void *)thread_echo, hbrc);
+				ret = pthread_create(&g_echoThread.echo_thpid, NULL, (void *)thread_echo, hbrc);
 				if (ret != 0) {
 					debug(LOG_ERR, "FATAL: Failed to create a new thread (thread_echo)!");
 				}
 			}
-			G.echoThread.pause_flag = 0;
+			g_echoThread.pause_flag = 0;
 
-			if(G.recvThread.recv_thpid == 0 ){
+			if(g_recvThread.recv_thpid == 0 ){
 				debug(LOG_INFO, "Creation of thread_recv!");
-				ret = pthread_create(&G.recvThread.recv_thpid, NULL, (void *)thread_recv, hbrc);
+				ret = pthread_create(&g_recvThread.recv_thpid, NULL, (void *)thread_recv, hbrc);
 				if (ret != 0) {
 					debug(LOG_ERR, "FATAL: Failed to create a new thread (thread_recv)!");
 				}
 			}
-			G.recvThread.pause_flag = 0;
+			g_recvThread.pause_flag = 0;
 
-			if(G.udpThread.udpserver_thpid == 0 ){
-				debug(LOG_ERR, "%s : Creation of thread_udp_server check zigbee station !",__FUNCTION__);
-				ret = pthread_create(&G.udpThread.udpserver_thpid, NULL, (void *)thread_udp_server, NULL);
+			if(g_udpThread.udpserver_thpid == 0 ){
+				debug(LOG_ERR, "%s : Creation of thread_udp_server!",__FUNCTION__);
+				ret = pthread_create(&g_udpThread.udpserver_thpid, NULL, (void *)thread_udp_server, hbrc);
 				if (ret != 0) {
-					debug(LOG_ERR, "FATAL: Failed to create a new thread (thread_recv)!");
+					debug(LOG_ERR, "FATAL: Failed to create a new thread (thread_udp_server)!");
 				
 				}
-				pthread_detach(G.udpThread.udpserver_thpid);
+				pthread_detach(g_udpThread.udpserver_thpid);
 			}
-			G.udpThread.pause_flag = 0;
+			g_udpThread.pause_flag = 0;
 
 			debug(LOG_ERR, "[CHANLLENGE -> ECHO] ");
 			hbrc->hbrc_sm = HBRC_ECHO;
@@ -345,9 +490,9 @@ int hb_do_process(struct heartbeat_route_client* hbrc)
 #endif
 		}		
 		else if ( HBRC_CLEAN == hbrc->hbrc_sm ) {
-			G.echoThread.pause_flag = 1;
-			G.recvThread.pause_flag = 1;
-			G.udpThread.pause_flag = 1;
+			g_echoThread.pause_flag = 1;
+			g_recvThread.pause_flag = 1;
+			g_udpThread.pause_flag = 1;
 			clean_hbrc(hbrc);
 			debug(LOG_ERR, "[CLEAN -> INIT] Pause echo thread and recv thread,reinit!");
 			hbrc->hbrc_sm = HBRC_INIT;

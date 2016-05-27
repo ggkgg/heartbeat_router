@@ -211,9 +211,8 @@ vendor:  厂商字段
 vendorMsg:  厂商自定义消息
 vendorMsgLen: 厂商自定义消息长度
 */
-int business_report(u32_t vendor,char* vendorMsg,int vendorMsgLen)
+int business_report(struct heartbeat_route_client* hbrc, u32_t vendor,char* vendorMsg,int vendorMsgLen)
 {
-	struct heartbeat_route_client *hbrc = G.hbrc;
    	char emac[16] = {0}; 
 	unsigned int emac_x[12] = {0};
     THDR echo_hdr;
@@ -279,13 +278,12 @@ int proc_issuereq(struct heartbeat_route_client* hbrc, char *pBuff)
 
 	//vendorMsg = &issueReqMsg + 4;
 	//vendorMsgLen = pHdr->pktlen - (sizeof(THDR)+4);
-	business_issue_resp();
+	business_issue_resp(hbrc);
 }
 
 
-int business_issue_resp()
+int business_issue_resp(struct heartbeat_route_client* hbrc)
 {
-	struct heartbeat_route_client *hbrc = G.hbrc;
 	THDR issueRespHdr;
 	THDR *pHdr = &issueRespHdr;
 	char msg[512] = {0};
