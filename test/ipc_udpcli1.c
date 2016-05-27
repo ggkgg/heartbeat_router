@@ -70,6 +70,9 @@ int main(int argc, char **argv)
 		
 		printf("root(%d) = %s\n",outLen,out);
 		strncpy(buff,out,outLen);
+		//buff[0] = '0';
+		//buff[1] = '1';
+		//buff[outLen-40-138] = '\0';
 		buff[outLen] = '\0';
 
         n = sendto(sock, buff, strlen(buff), 0, (struct sockaddr *)&addr, sizeof(addr));
@@ -103,7 +106,7 @@ int main(int argc, char **argv)
 		cJSON_Delete(root);
 		free(out);
 
-		usleep(100*1000);
+		usleep(10000*1000);
     }
     
     return 0;

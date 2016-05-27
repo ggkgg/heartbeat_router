@@ -66,14 +66,12 @@ void call_ipchelper(ipc_udp_client_st *ipCli)
 	/*  解析json格式数据，分析第一层协议数据 cmd_url , cmd_name,vendor  */
 	if (parse_json_udpmsg(ipCli) < 0) {
 		hb_print(LOG_ERR,"parse json udp packet error!");
-		delete_ipcli(ipCli);
 		return;
 	}
 
 	/*  通过vendor字段分发数据  */
 	if (dispatch_json_udpmsg(ipCli) < 0) {
 		hb_print(LOG_ERR,"dispatch json udp packet error!");
-		delete_ipcli(ipCli);
 		return;
 	}
 	return;

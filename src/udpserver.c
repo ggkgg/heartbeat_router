@@ -117,12 +117,13 @@ void delete_ipcli(ipc_udp_client_st *ipCli)
 
 int process_recvmsg(int udpfd)
 {
+	int result = 0;
 	char mesg[MAXLINE];
 	socklen_t	len;
 	ipc_udp_client_st *ipCli;
 
 	if(G.udpThread.pause_flag) {
-		return 0;
+		return result;
 	}
 
 
@@ -140,8 +141,7 @@ int process_recvmsg(int udpfd)
 	/*  当前udp只处理ipc消息，调用錭all_ipchelper触发ipc消息解析  */
 	if (call_ipchelper(ipCli) < 0) {
 		hb_print(LOG_ERR,"parse json udp packet error!");
-		delete_ipcli(ipCli);
-		return -1;
+		result = -1;
 	}
 
 
@@ -152,7 +152,7 @@ int process_recvmsg(int udpfd)
 	net_sendto(ipCli->listenfd, ipCli->sendMsg, ipCli->sendMsgLen, 0, (struct sockaddr*) &ipCli->cliAddr, len);
 #endif
 	delete_ipcli(ipCli);
-	return 0;
+	return result;
 }
 
 int udp_server(int port)
