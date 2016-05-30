@@ -103,7 +103,7 @@ int main(int argc, char **argv)
 		cJSON_Delete(root);
 		free(out);
 
-		usleep(100*1000);
+		usleep(1000*1000);
     }
     
     return 0;

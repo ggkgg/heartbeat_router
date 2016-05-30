@@ -360,9 +360,6 @@ int net_recv_msg(struct heartbeat_route_client* hbrc)
             maxLen = 512;
         }
 
-		/* pengruofeng debug core dump*/
-		hb_print(LOG_INFO, "totalLen(%d),dataLen(%d),len(%d)",totalLen,dataLen,len);
-
         if(totalLen <= maxLen)
         {
             memcpy(oldBuff + dataLen, buff, len);
@@ -462,8 +459,6 @@ int net_send_msg(struct heartbeat_route_client *hbrc,THDR* pHdr,char* pMsg,int m
 
 	//XORencode(pMsg, encodeMsg, hbrc->session_server_key, pHdr->pktlen);
 	hbrc->msg_encode(pMsg, encodeMsg, hbrc->session_server_key,msgLen);
-
-	hb_print(LOG_ERR,"########## encodeMsg = %s ",encodeMsg);
 
 	hdrLen = sizeof(THDR);
     memcpy(netMsg, pHdr, hdrLen);
