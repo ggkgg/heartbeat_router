@@ -11,6 +11,34 @@ struct echo_thread g_echoThread;
 struct recv_thread g_recvThread;
 struct udp_thread g_udpThread;
 
+void delete_ipcli(ipc_udp_client_st *ipCli)
+{
+	if(!ipCli)
+		return;
+
+	if(ipCli->recvMsg) {
+		free(ipCli->recvMsg);
+		ipCli->recvMsg = NULL;
+	}
+
+	if(ipCli->sendMsg) {
+		free(ipCli->sendMsg);
+		ipCli->sendMsg = NULL;
+	}
+
+	if(ipCli->jsonMsg)
+		cJSON_Delete(ipCli->jsonMsg);
+
+	if(ipCli->jsonModule)
+		free(ipCli->jsonModule);
+	if(ipCli->jsonCmdName)
+		free(ipCli->jsonCmdName);
+	if(ipCli->jsonVendor)
+		free(ipCli->jsonVendor);
+
+	free(ipCli);
+}
+
 
 /* 轮询心跳服务器，如果全部失败，返回-1*/
 int search_hbs(struct heartbeat_route_client *hbrc)

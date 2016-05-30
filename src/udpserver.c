@@ -71,35 +71,6 @@ void thread_recv_udpmsg(void *data)
 }
 #endif
 
-void delete_ipcli(ipc_udp_client_st *ipCli)
-{
-	if(!ipCli)
-		return;
-
-	if(ipCli->recvMsg) {
-		free(ipCli->recvMsg);
-		ipCli->recvMsg = NULL;
-	}
-
-	if(ipCli->sendMsg) {
-		free(ipCli->sendMsg);
-		ipCli->sendMsg = NULL;
-	}
-
-	if(ipCli->jsonMsg)
-		cJSON_Delete(ipCli->jsonMsg);
-
-	if(ipCli->jsonModule)
-		free(ipCli->jsonModule);
-	if(ipCli->jsonCmdName)
-		free(ipCli->jsonCmdName);
-	if(ipCli->jsonVendor)
-		free(ipCli->jsonVendor);
-
-	free(ipCli);
-}
-
-
 #if 0
 int udp_server(int port)
 {

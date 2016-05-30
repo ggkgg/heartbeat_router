@@ -390,6 +390,10 @@ int main(int argc, char **argv)
 	parse_file(hbrc);
 #endif
 #endif
+
+#ifdef HB_IPC
+	hb_ipc_init(hbrc);
+#endif
 	hb_do_process(hbrc);
 exit:
 	return 0;

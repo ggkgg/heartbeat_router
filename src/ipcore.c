@@ -1,7 +1,8 @@
 #include <stdlib.h>
 
+#include "hb_core.h"
 #include "cJSON.h"
-#include "udpserver.h"
+//#include "udpserver.h"
 #include "common.h"
 
 
@@ -66,16 +67,30 @@ void call_ipchelper(ipc_udp_client_st *ipCli)
 	/*  解析json格式数据，分析第一层协议数据 cmd_url , cmd_name,vendor  */
 	if (parse_json_udpmsg(ipCli) < 0) {
 		hb_print(LOG_ERR,"parse json udp packet error!");
-		delete_ipcli(ipCli);
 		return;
 	}
 
 	/*  通过vendor字段分发数据  */
 	if (dispatch_json_udpmsg(ipCli) < 0) {
 		hb_print(LOG_ERR,"dispatch json udp packet error!");
-		delete_ipcli(ipCli);
 		return;
 	}
 	return;
 }
+
+int hb_ipc_init(struct heartbeat_route_client* hbrc)
+{
+	struct hbc_ipc *hbcIpc;
+	
+	hbcIpc = (struct hbc_ipc*)malloc(sizeof(struct hbc_ipc));
+	bzero(hbcIpc,sizeof(struct hbc_ipc));
+	
+	hbcIpc->priv_data = (void *)hbrc;
+	hbcIpc->parse_ipc_msg = parse_json_udpmsg;
+	hbcIpc->dispatch_ipc_msg = dispatch_json_udpmsg;
+	
+	hbrc->hbc_ipc = hbcIpc;
+
+}
+
 

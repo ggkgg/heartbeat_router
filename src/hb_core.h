@@ -2,6 +2,8 @@
 #define _HB_CORE_H
 
 #include "common.h"
+#include "cJSON.h"
+#include "ipcore.h"
 
 enum hbrc_sm_type {
 	HBRC_INVALID = 0,
@@ -45,6 +47,10 @@ struct heartbeat_route_client {
     int maxLen;
 	int activeRecvFlag;
 
+#ifdef HB_IPC
+	struct hbc_ipc *hbc_ipc;
+#endif
+
 	/*function*/
 	void (*chall_encode) (const void *i_blk, void *o_blk, void *key, int len);
 	void (*chall_decode) (const void *i_blk, void *o_blk, void *key, int len);
@@ -86,6 +92,22 @@ struct udp_thread {
 	int pause_flag;
 };
 
+struct ipc_udp_client_s
+{
+	struct ipc_udp_server_s *ipcServ;
+	struct sockaddr_in cliAddr;
+	char *recvMsg;
+	int recvMsgLen;
+	char *sendMsg;
+	int sendMsgLen;
+	cJSON * jsonMsg;
+	char *jsonModule;
+	char *jsonCmdName;
+	char *jsonVendor;
+};
+
+
+typedef struct ipc_udp_client_s ipc_udp_client_st;
 
 #define MAX_HB_COUNT 10
 #define	MAXLINE	2048	/* to see datagram truncation */
