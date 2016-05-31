@@ -310,7 +310,16 @@ int net_recv_msg(struct heartbeat_route_client* hbrc)
 			
 			/* mips平台下，设置非阻塞模式，没有数据返回0，表示success，平台bug? (x86平台errno=0表示成功) */
 			if(errno == 0)
-				break;
+				return -1;
+			
+			/* errno(104)=Connection reset by peer 
+			[6][2016-05-30 17:38:56][28039](src/net.c:301) alread read ? errno(104)=Connection reset by peer
+			*/
+			if(errno == 104)
+				return -1;
+
+			hb_print(LOG_ERR, "[Fail] read < 0 bytes, errno(%d)=%s!",errno,strerror(errno));
+			return -1;
 #if 0
             else
             {
@@ -608,7 +617,6 @@ int net_echo(struct heartbeat_route_client *hbrc)
     pHdr->sn = hbrc->sendsn++;
 
 	/* 记录收到心跳回应包对应的sn号 */
-	debug(LOG_INFO, "echo request last_sn(%d)",pHdr->sn);
 	hbrc->last_req_echosn = pHdr->sn;
 
     TECHOREQ echo_reqmsg;
