@@ -146,6 +146,8 @@ void thread_echo(void *arg)
 	struct	timespec timeout;
 	
 	while (1) {
+		/* note: 线程启动后，立马发送心跳包，不要间隔时间，因为心跳服务器是依靠
+		 第一个心跳包来刷新状态，不立马更新的话，可能会出现异常现象。*/
 		if(!G.echoThread.pause_flag) {
 			debug(LOG_INFO, "echo send sn(%d) last_sn(%d)",hbrc->last_req_echosn,hbrc->last_resp_echosn);
 			if ( hbrc->last_req_echosn > hbrc->last_resp_echosn ) {

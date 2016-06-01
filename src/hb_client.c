@@ -41,7 +41,8 @@ void handle_socket_I( int sig )
 
 void sig_watch_status( int sig )
 {
-	hb_log(LOG_ERR,"thread status(run) : echo(%d) recv(%d) udpserver(%d) \n",!g_echoThread.pause_flag,!g_recvThread.pause_flag,!g_udpThread.pause_flag);
+	//hb_log(LOG_ERR,"thread status(run) : echo(%d) recv(%d) udpserver(%d) \n",!g_echoThread.pause_flag,!g_recvThread.pause_flag,!g_udpThread.pause_flag);
+	hb_log(LOG_ERR,"thread status(run) : echo(%d) recv(%d) udpserver(%d) \n",!G.echoThread.pause_flag,!G.recvThread.pause_flag,!G.udpThread.pause_flag);
 	hb_log(LOG_ERR,"sn : send(%d) recv(%d) \n",G.hbrc->sendsn,G.hbrc->recvsn);
 	hb_log(LOG_ERR,"echo sn : last echo request(%d) last echo response(%d) \n",G.hbrc->last_req_echosn,G.hbrc->last_resp_echosn);
 }
