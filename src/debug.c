@@ -4,6 +4,15 @@ struct debug_info debug_global;
 
 #define time_format tm_now->tm_year+1900,tm_now->tm_mon+1,tm_now->tm_mday,tm_now->tm_hour,tm_now->tm_min,tm_now->tm_sec
 
+
+void debug_init(int debug_level,int syslog,int syslog_facility)
+{
+	debug_global.debuglevel = debug_level;
+	debug_global.log_syslog = syslog;
+	debug_global.syslog_facility = syslog_facility;
+}
+
+
 void
 _debug(char *filename, int line, int level, char *format, ...)
 {

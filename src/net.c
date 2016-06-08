@@ -760,15 +760,15 @@ void print_echoresp(THDR  *tHdr, TECHORESP *echoResp)
 void print_notifyreq(THDR  *tHdr,TNOTIFYREQ  *notifyReq)
 {
 	hb_print(LOG_ERR,"<<-- [notify resquest] [hdr]:{flag(0x%04x),pktlen(%d),version(%d),pktType(%d),sn(%d),ext(0x%08x)} \
-[data]:{equipmentSn(0x%c%c%c%c%c%c), command(%d), sendtime(%d)}", 
+[data]:{equipmentSn(0x%02x%02x%02x%02x%02x%02x), command(%d), sendtime(%d)}", 
 		tHdr->flag,
 		tHdr->pktlen,
 		tHdr->version,
 		tHdr->pktType,
 		tHdr->sn,
 		tHdr->ext,
-		notifyReq->equipmentSn[0],notifyReq->equipmentSn[1],notifyReq->equipmentSn[2],
-		notifyReq->equipmentSn[3],notifyReq->equipmentSn[4],notifyReq->equipmentSn[5],
+		(unsigned char)notifyReq->equipmentSn[0],(unsigned char)notifyReq->equipmentSn[1],(unsigned char)notifyReq->equipmentSn[2],
+		(unsigned char)notifyReq->equipmentSn[3],(unsigned char)notifyReq->equipmentSn[4],(unsigned char)notifyReq->equipmentSn[5],
 		notifyReq->command,notifyReq->sendTime);
 }
 

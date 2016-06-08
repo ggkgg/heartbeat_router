@@ -11,36 +11,7 @@ struct echo_thread g_echoThread;
 struct recv_thread g_recvThread;
 struct udp_thread g_udpThread;
 
-void delete_ipcli(ipc_udp_client_st *ipCli)
-{
-	if(!ipCli)
-		return;
-
-	if(ipCli->recvMsg) {
-		free(ipCli->recvMsg);
-		ipCli->recvMsg = NULL;
-	}
-
-	if(ipCli->sendMsg) {
-		free(ipCli->sendMsg);
-		ipCli->sendMsg = NULL;
-	}
-
-	if(ipCli->jsonMsg)
-		cJSON_Delete(ipCli->jsonMsg);
-
-	if(ipCli->jsonModule)
-		free(ipCli->jsonModule);
-	if(ipCli->jsonCmdName)
-		free(ipCli->jsonCmdName);
-	if(ipCli->jsonVendor)
-		free(ipCli->jsonVendor);
-
-	free(ipCli);
-}
-
-
-/* 轮询心跳服务器，如果全部失败，返回-1*/
+/* 轮询心跳服务器，如果全部失败，返回0*/
 int search_hbs(struct heartbeat_route_client *hbrc)
 {
 	int i=0;
@@ -54,12 +25,12 @@ int search_hbs(struct heartbeat_route_client *hbrc)
 	for( i=0;i<hbrc->hbs_count;i++) {
 		struct hb_server* hbs;
 		int clientfd;
-		//char revBuffer[128] = {0};
-		//int recbytes,recTolBytes = 0;
 		unsigned char de_msgstr[256] = {0};
 
 		hbs = hbrc->hbs_head[i];
 		hb_print(LOG_INFO,"try to connect heartbeat server(%s:%d)",inet_ntoa(hbs->hbs_ip),hbs->hbs_port);
+		
+		/* hb_connect可判断出服务器是否可连接 */
 		if ((clientfd = hb_connect(inet_ntoa(hbs->hbs_ip),hbs->hbs_port)) == -1) {
 			/*Connect HeartBeat Fail!*/
 			sleep(5);
@@ -69,58 +40,7 @@ int search_hbs(struct heartbeat_route_client *hbrc)
 		hbrc->hbrc_sockfd = clientfd;
 		
 		net_challange(hbrc);
-#if 0
-		fd_set read_fds;
-		int maxsock;
-		struct timeval tv;
-		int ret;
-		int chanResqLen;
-
-		chanResqLen = sizeof(THDR) + sizeof(TCHALRESP);
-		while (recTolBytes < chanResqLen) {
-			char revdata[128] = {0};
-			maxsock = clientfd;
-			// timeout setting
-			tv.tv_sec = 5;
-			tv.tv_usec = 0;
-
-			// initialize file descriptor set
-			FD_ZERO(&read_fds);
-			FD_SET(clientfd, &read_fds);
-			ret = select(maxsock + 1, &read_fds, NULL, NULL, &tv);
-			if (ret < 0) {
-				hb_print(LOG_ERR, "[Fail] create select !");
-				break;
-			} else if (ret == 0) {
-				hb_print(LOG_INFO, "select timeout!");
-				continue;
-			}			
-			if (FD_ISSET(clientfd, &read_fds)) {
-				recbytes = read(clientfd, revdata, 128);
-				memcpy(&revBuffer[recTolBytes],revdata,recbytes);
-				recTolBytes += recbytes;
-			}
-		}
-
-
-
-		THDR *pHdr;
-		pHdr = (THDR *)revBuffer;
-		int datalen = sizeof(THDR) + pHdr->pktlen;	
-
-		TCHALRESP  Rchal_respmsg;
-		TCHALRESP  *pReq = &Rchal_respmsg;
-
-		/*pengruofeng debug mips*/
-		int j;
-		unsigned char *Chaldata = revBuffer + sizeof(THDR);
-		printf("EDS cryto data(%d): \n",recTolBytes);
-		for(j=0;j<sizeof(TCHALRESP);j++)
-			printf("%02x",Chaldata[j]);
-		printf("\n");
-
-		des_decode((void *)(revBuffer + sizeof(THDR)), pReq, CHANLLENGE_KEY, sizeof(*pReq));
-#else
+		
 		TCHALRESP  Rchal_respmsg;
 		TCHALRESP  *pReq = &Rchal_respmsg;
 		THDR hdr;
@@ -129,13 +49,11 @@ int search_hbs(struct heartbeat_route_client *hbrc)
 		if (net_recv_challage_msg(hbrc,pHdr,pReq) < 0){
 			continue;
 		}
-#endif
 
 		u32_t* pchage = (u32_t *)&Rchal_respmsg.key;
 		hbrc->session_server_key = *pchage;
 		hbrc->current_hbs = hbs;
 
-		//print_hdr(pHdr);
 		print_chalresp(pHdr,pReq);
 		conectFlag = 1;
 		break;
@@ -302,13 +220,16 @@ int process_ipc_msg(ipc_udp_server_st *ipcServ)
 	char mesg[MAXLINE];
 	socklen_t	len;
 	ipc_udp_client_st *ipCli;
+	struct heartbeat_route_client *hbrc = ipcServ->priv_data;
+	struct hbc_ipc *pHbcIpc = hbrc->hbc_ipc;
 
 	if(g_udpThread.pause_flag) {
 		return 0;
 	}
 
-
 	udpfd = ipcServ->listenfd;
+
+#if 0
 
 	ipCli = (ipc_udp_client_st *)malloc(sizeof(ipc_udp_client_st));
 	bzero(ipCli,sizeof(ipc_udp_client_st));
@@ -327,6 +248,20 @@ int process_ipc_msg(ipc_udp_server_st *ipcServ)
 		delete_ipcli(ipCli);
 		return -1;
 	}
+#endif
+
+	pHbcIpc->recvMsg = (char *)malloc(MAXLINE*sizeof(char));
+	memset(pHbcIpc->recvMsg,0,MAXLINE*sizeof(char));
+	len = sizeof(pHbcIpc->cliAddr);
+	pHbcIpc->recvMsgLen = net_recvfrom(udpfd, pHbcIpc->recvMsg, MAXLINE, 0, (struct sockaddr*)&pHbcIpc->cliAddr, &len);
+
+	if(pHbcIpc->parse_ipc_msg(pHbcIpc) < 0) {
+		hb_print(LOG_ERR,"parse ipc msg error!");
+		clean_hbc_ipc(pHbcIpc);
+		return -1;
+	}
+		
+	pHbcIpc->dispatch_ipc_msg(pHbcIpc);
 
 
 #if 0
@@ -335,9 +270,9 @@ int process_ipc_msg(ipc_udp_server_st *ipcServ)
 	printf("ipCli->sendMsg(%d)(%s)\n",ipCli->sendMsgLen,ipCli->sendMsg);
 	net_sendto(ipCli->listenfd, ipCli->sendMsg, ipCli->sendMsgLen, 0, (struct sockaddr*) &ipCli->cliAddr, len);
 #endif
-	delete_ipcli(ipCli);
+	//delete_ipcli(ipCli);
+	clean_hbc_ipc(pHbcIpc);
 	return 0;
-
 }
 
 
@@ -400,12 +335,6 @@ int init_hbrc(struct heartbeat_route_client** hbrcp)
 	hbrc->hbs_count = 0;
 	hbrc->hbs_head = (struct hb_server **)malloc(MAX_HB_COUNT*sizeof(struct hb_server *));
 
-
-	/* init hbrc conf */
-	//hbcConf = (struct hbc_conf *)malloc(sizeof(struct hbc_conf));
-	//init_default_hbc_config(hbcConf);	
-	//hbrc->hbrc_conf = hbcConf;
-	//(*hbrcp)->hbrc_conf = (struct hbc_conf *)malloc(sizeof(struct hbc_conf));
 	init_default_hbc_config(&hbrc->hbrc_conf);	
 
 #if CVNWARE
@@ -511,11 +440,6 @@ int hb_do_process(struct heartbeat_route_client* hbrc)
 		}
 		else if ( HBRC_ECHO == hbrc->hbrc_sm ) {
 			sleep(30);
-
-#if DEBUG_IPC		
-			u32_t vendor = 0x11223344;
-			business_report(vendor);
-#endif
 		}		
 		else if ( HBRC_CLEAN == hbrc->hbrc_sm ) {
 			g_echoThread.pause_flag = 1;

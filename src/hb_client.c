@@ -6,27 +6,8 @@ pthread_mutex_t SEND_MUTEX = PTHREAD_MUTEX_INITIALIZER;
 
 #define DEBUG_IPC 0
 
-#if 0
-static u32_t session_client_key = 0;
-static u32_t session_server_key = 0;
-
-static int sendsn = 10002;
-#endif
-
 static int init_resource()
 {	
-#if 0
-	G.configFile = strdup(DEFAULT_CONFIG_PATH);
-	G.echoThread.echo_thpid = 0;
-	G.echoThread.pause_flag = 1;
-
-	G.recvThread.recv_thpid = 0;
-	G.recvThread.pause_flag = 1;
-
-
-	G.udpThread.udpserver_thpid = 0;
-	G.udpThread.pause_flag = 1;
-#else
 	G.configFile = strdup(DEFAULT_CONFIG_PATH);
 
 	g_echoThread.echo_thpid = 0;
@@ -38,11 +19,6 @@ static int init_resource()
 
 	g_udpThread.udpserver_thpid = 0;
 	g_udpThread.pause_flag = 1;
-#endif
-
-	debug_global.debuglevel = DEFAULT_DEBUGLEVEL;
-	debug_global.log_syslog = DEFAULT_LOG_SYSLOG;
-	debug_global.syslog_facility = DEFAULT_SYSLOG_FACILITY;
 	return 0;
 }
 
@@ -152,11 +128,9 @@ static struct hb_server* get_hbs()
 {
 	struct hb_server* hbs;
 	hbs = (struct hb_server*)malloc(sizeof(struct hb_server));
-	//hbs->hbs_sm = HBS_INVALID;
 	inet_aton("127.0.0.1",&hbs->hbs_ip);
 	hbs->hbs_port = 0;
 	hbs->hbs_index = -1;
-	//hbs->hbs_sm = HBS_STRAT;
 	return hbs;
 }
 
@@ -312,24 +286,6 @@ static int parse_startup_mtk(struct heartbeat_route_client *hbrc)
 
 static int parse_file(struct heartbeat_route_client* hbrc)
 {
-#if 0
-	char str_ipdomain[256] = {0};
-	char str_int[16] = {0};
-	int conn_interval = 0;
-	
-	if(GetProfileString(G.configFile, "server_conf", "ip-domain", str_ipdomain) < 0){
-		hb_print(LOG_ERR, " not found ip-domain!");
-		return -1;
-	}
-	
-	if(GetProfileString(G.configFile, "connect_conf", "connect-interval", str_int) < 0){
-		hb_print(LOG_ERR, " not found ip-domain!");
-		return -1;
-	}
-	conn_interval = atoi(str_int);
-	hb_print(LOG_INFO, "ipdomain(%s) conn_interval(%d)",str_ipdomain,conn_interval);
-#endif
-
 	char hbAddr[128] = {0};
 	char hbDefaultAddr[128] = {0};
 
@@ -365,6 +321,7 @@ int main(int argc, char **argv)
 	void *status;
 	struct heartbeat_route_client *hbrc;	
 
+	debug_init(DEFAULT_DEBUGLEVEL,DEFAULT_LOG_SYSLOG,DEFAULT_SYSLOG_FACILITY);
 
 	//初始化必要的资源	
 	if( init_resource() < 0 ){
@@ -401,7 +358,10 @@ int main(int argc, char **argv)
 
 #ifdef HB_IPC
 	hb_ipc_init(hbrc);
+	ipc_mye_init();
 #endif
+	business_init(hbrc);
+
 	hb_do_process(hbrc);
 exit:
 	return 0;

@@ -2,7 +2,12 @@
 #include "cJSON.h"
 
 extern struct glob_arg G;
+struct hbc_business {
+	struct heartbeat_route_client* hbrc;
+};
 
+struct hbc_business g_hbc_business;
+	
 static void print_reportreq(THDR  *tHdr, TREPORTREQ  *reportReq)
 {
 	hb_print(LOG_ERR,"[report resquest] -->> [hdr]:{flag(0x%04x),pktlen(%d),version(%d),pktType(%d),sn(%d),ext(0x%08x)} \
@@ -211,8 +216,9 @@ vendor:  厂商字段
 vendorMsg:  厂商自定义消息
 vendorMsgLen: 厂商自定义消息长度
 */
-int business_report(struct heartbeat_route_client* hbrc, u32_t vendor,char* vendorMsg,int vendorMsgLen)
+int business_report(u32_t vendor,char* vendorMsg,int vendorMsgLen)
 {
+	struct heartbeat_route_client* hbrc = g_hbc_business.hbrc;
    	char emac[16] = {0}; 
 	unsigned int emac_x[12] = {0};
     THDR echo_hdr;
@@ -315,6 +321,11 @@ int business_issue_resp(struct heartbeat_route_client* hbrc)
 #endif
 	return 1;
 
+}
+
+void business_init(struct heartbeat_route_client* hbrc)
+{
+	g_hbc_business.hbrc = hbrc;
 }
 
 

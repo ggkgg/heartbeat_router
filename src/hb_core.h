@@ -95,10 +95,7 @@ struct udp_thread {
 struct ipc_udp_client_s
 {
 	struct ipc_udp_server_s *ipcServ;
-	struct sockaddr_in cliAddr;
-	char *recvMsg;
-	int recvMsgLen;
-	char *sendMsg;
+	struct sockaddr_in cliAddr;	char *sendMsg;
 	int sendMsgLen;
 	cJSON * jsonMsg;
 	char *jsonModule;

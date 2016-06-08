@@ -15,6 +15,8 @@ struct debug_info {
 };
 
 
+void debug_init(int debug_level,int syslog,int syslog_facility);
+
 /** @brief Used to output messages.
  *The messages will include the finlname and line number, and will be sent to syslog if so configured in the config file 
  */
