@@ -96,7 +96,7 @@ static void parse_commandline(int argc, char **argv) {
 	}
 }
 
-static int amts_getmac(char *emac)
+int amts_getmac(char *emac)
 {
 	char ifr[32] = {0};
 	FILE *file;
